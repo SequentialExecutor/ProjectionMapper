@@ -648,6 +648,14 @@ namespace ProjectionMapper.Services
                     return;
                 }
 
+                // Paused playlist sources keep cached frames, but an inactive group must
+                // not become visible again when its mesh is reassigned to another output.
+                if (!IsLayerAllowedToRender(mesh.SourceId))
+                {
+                    _rendererManager.SubmitLayerFrameForMonitor(meshLayerId, null, new Rect(), null, 0.0, mesh.TargetMonitorIndex);
+                    return;
+                }
+
                 // NOTE: Do NOT skip rendering based on Visible property - video content should always render
                 // The Visible property only controls overlay (bounding box/handles) visibility in the UI
 
