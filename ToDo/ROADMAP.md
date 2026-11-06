@@ -152,6 +152,8 @@ Dependency: Milestones 2–3 and owner selection of a vision provider.
 
 Goal: create artwork for selected mapped surfaces and keep usable results inside the project.
 
+Implementation: see [AI artwork](AI-ARTWORK.md) for provider tokens, downloads, library workflows, offline playback, and acceptance checks.
+
 Work:
 - Define an asynchronous provider interface with a first image-generation implementation.
 - Support prompts, reference images, palette/style guidance, single-surface generation, and coordinated compositions.

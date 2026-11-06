@@ -82,6 +82,7 @@ internal static class Program
             manager.SubmitLayerFrameForMonitor("rectangle", image, new Rect(960, 540, 192, 108), null, 1, 0);
             Check(Math.Abs(preview.LastRectangle.X - 64) < .001 && Math.Abs(preview.LastRectangle.Width - 12.8) < .001,
                 "rectangle scales to preview dimensions without requiring a quad");
+            ArtworkWindowsChecks.Run();
             ScenePhotoChecks.Run();
             RenderingChecks.Run();
             Console.WriteLine("Output routing regression checks passed.");

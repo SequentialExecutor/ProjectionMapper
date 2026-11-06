@@ -38,7 +38,7 @@ namespace ProjectionMapper.Rendering
         // WPF's MIL/DUCE composition infrastructure is not safe for concurrent access from
         // multiple threads — even dedicated STA render-loop threads. Static so all three
         // instances (main preview + monitor 1 + monitor 2) share one lock.
-        private static readonly object _renderLock = new();
+        private static readonly object _renderLock = WpfCompositionGate.SyncRoot;
 
         public void Dispose()
         {

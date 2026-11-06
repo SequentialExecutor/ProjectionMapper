@@ -1,0 +1,62 @@
+<Window x:Class="ProjectionMapper.Views.ArtworkWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ProjectionMapper.Views"
+ Title="AI artwork library" Width="1180" Height="820" MinWidth="1000" MinHeight="650" WindowStartupLocation="CenterOwner">
+ <Window.Resources><local:ArtworkThumbnailConverter x:Key="ArtworkThumbnail" /></Window.Resources>
+ <DockPanel Margin="16">
+  <StackPanel DockPanel.Dock="Bottom">
+   <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="DarkBlue" Margin="0,8" />
+   <WrapPanel HorizontalAlignment="Right">
+    <Button x:Name="CancelRequest" Content="Cancel generation" Click="Cancel_Click" IsEnabled="False" Margin="4" Padding="10,5" />
+    <Button Content="Restore preview" Click="RestorePreview_Click" Margin="4" Padding="10,5" />
+    <Button x:Name="Preview" Content="Preview on projectors" Click="Preview_Click" Margin="4" Padding="10,5" />
+    <Button x:Name="Keep" Content="Keep in project library" Click="Keep_Click" Margin="4" Padding="10,5" />
+    <Button x:Name="Apply" Content="Apply to selected surfaces" Click="Apply_Click" Margin="4" Padding="10,5" />
+   </WrapPanel>
+  </StackPanel>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="340" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+   <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+    <TextBlock Text="Mapped surfaces" FontSize="18" FontWeight="SemiBold" />
+    <Button Content="Refresh surfaces" Click="RefreshSurfaces_Click" HorizontalAlignment="Left" Margin="0,5" />
+    <ListBox x:Name="Surfaces" Height="105" SelectionMode="Extended" DisplayMemberPath="Name" />
+    <TextBlock Text="Select 1–8 surfaces. A shared unwarped layout creates coordinated artwork; existing projector alignment is preserved." TextWrapping="Wrap" Margin="0,6" />
+    <StackPanel x:Name="RequestFields">
+     <TextBlock Text="Provider" FontWeight="Bold" />
+     <ComboBox x:Name="Provider" SelectionChanged="Provider_Changed" Margin="0,4" />
+     <TextBlock x:Name="Capabilities" TextWrapping="Wrap" FontSize="11" />
+     <TextBlock Text="Provider API access token" Margin="0,8,0,0" /><PasswordBox x:Name="Token" Margin="0,4" />
+     <CheckBox x:Name="Remember" Content="Remember in Windows Credential Manager" />
+     <Button Content="Forget stored token" Click="ForgetToken_Click" HorizontalAlignment="Left" Margin="0,4" />
+     <TextBlock Text="Model" /><TextBox x:Name="Model" Margin="0,4" MaxLength="120" />
+     <TextBlock Text="Prompt" /><TextBox x:Name="Prompt" Height="65" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxLength="5000" Margin="0,4" />
+     <TextBlock Text="Project style" /><TextBox x:Name="ArtStyle" MaxLength="1000" Margin="0,4" />
+     <TextBlock Text="Palette" /><TextBox x:Name="Palette" MaxLength="500" Margin="0,4" />
+     <WrapPanel Margin="0,5">
+      <ComboBox x:Name="ImageSize" Width="115" SelectedIndex="0"><ComboBoxItem Content="1024x1024" /><ComboBoxItem Content="1536x1024" /><ComboBoxItem Content="1024x1536" /></ComboBox>
+      <ComboBox x:Name="Quality" Width="85" SelectedIndex="1" Margin="6,0"><ComboBoxItem Content="low" /><ComboBoxItem Content="medium" /><ComboBoxItem Content="high" /></ComboBox>
+      <ComboBox x:Name="ImageBackground" Width="100" SelectedIndex="0"><ComboBoxItem Content="opaque" /><ComboBoxItem Content="auto" /><ComboBoxItem x:Name="TransparentOption" Content="transparent" /></ComboBox>
+     </WrapPanel>
+     <WrapPanel><TextBlock Text="Variants" VerticalAlignment="Center" Margin="0,0,6,0" /><ComboBox x:Name="Variants" Width="60" SelectedIndex="1"><ComboBoxItem Content="1" /><ComboBoxItem Content="2" /><ComboBoxItem Content="3" /><ComboBoxItem Content="4" /></ComboBox></WrapPanel>
+     <Button x:Name="ReferenceButton" Content="Add reference image… (up to 2)" Click="AddReference_Click" HorizontalAlignment="Left" Margin="0,6" />
+     <TextBlock x:Name="ReferenceNames" TextWrapping="Wrap" FontSize="11" /><Button Content="Clear references" Click="ClearReferences_Click" HorizontalAlignment="Left" />
+     <TextBlock Text="Download folder" Margin="0,8,0,0" /><TextBox x:Name="Folder" Margin="0,4" />
+     <Button Content="Choose folder…" Click="Folder_Click" HorizontalAlignment="Left" />
+     <CheckBox x:Name="Consent" Margin="0,10"><TextBlock Text="Send this prompt, selected surface names/layout guidance, and any supported guide/reference images to the selected provider. API charges apply at my account's pricing. No reliable cost estimate is available here. OpenAI uses one request for the batch; Gemini and Stability use one request per variant. Completed results download to this folder." TextWrapping="Wrap" /></CheckBox>
+     <Button Content="Generate and download" Click="Generate_Click" Padding="10,6" />
+    </StackPanel>
+   </StackPanel></ScrollViewer>
+   <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <StackPanel><TextBlock Text="Variants and project library" FontSize="18" FontWeight="SemiBold" /><TextBlock Text="Generation runs in the background; the main editor and playback remain available. Projector preview is temporary and follows playlist visibility." TextWrapping="Wrap" Margin="0,6" /></StackPanel>
+    <Border Grid.Row="1" Background="#20242A"><Image x:Name="ArtworkPreview" Stretch="Uniform" /></Border>
+    <ListBox x:Name="Images" Grid.Row="2" Height="125" SelectionChanged="Image_Changed" Margin="0,8" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+     <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+     <ListBox.ItemTemplate><DataTemplate><StackPanel Width="130" Margin="4"><Image Source="{Binding ThumbnailBase64, Converter={StaticResource ArtworkThumbnail}}" Height="75" Stretch="Uniform" /><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <StackPanel Grid.Row="3"><TextBlock x:Name="Metadata" TextWrapping="Wrap" FontSize="11" />
+     <WrapPanel Margin="0,6"><Button Content="Use selected image's settings" Click="UseSettings_Click" Margin="0,0,6,0" /><Button Content="Use selected as reference" Click="UseReference_Click" /></WrapPanel>
+     <WrapPanel Margin="0,6"><TextBlock Text="Offline still cue duration (seconds)" VerticalAlignment="Center" /><TextBox x:Name="HoldSeconds" Text="30" Width="60" Margin="8,0" /><Button Content="Download selected PNG" Click="Download_Click" Margin="4,0" /><Button Content="Discard unaccepted variants" Click="Discard_Click" Margin="4,0" /></WrapPanel>
+     <TextBlock Text="Saved video crop settings remain intact. Artwork uses its full assigned image cell, then the renderer applies the calibrated warp. Accepted images and thumbnails are embedded in the project for offline use." TextWrapping="Wrap" FontSize="11" />
+    </StackPanel>
+   </Grid>
+  </Grid>
+ </DockPanel>
+</Window>

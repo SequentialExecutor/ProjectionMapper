@@ -17,9 +17,9 @@ namespace ProjectionMapper.Models
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references and proposals.
+        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references; Version 4 = portable artwork assets and assignments.
         /// </summary>
-        public int ProjectVersion { get; set; } = 3;
+        public int ProjectVersion { get; set; } = 4;
 
         // Make surfaces observable for UI binding
         [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
@@ -43,6 +43,10 @@ namespace ProjectionMapper.Models
         // Embedded normalized scene references keep photo mapping and recovery portable.
         public List<PhotoMappingModel> PhotoMaps { get; set; } = new();
 
+        public List<ArtworkAsset> ArtworkAssets { get; set; } = new();
+        public string ArtworkStyle { get; set; } = string.Empty;
+        public string ArtworkPalette { get; set; } = string.Empty;
+
         // Global project settings
         public bool ShowMeshOverlay { get; set; } = true;
         public bool ShowCoordinateGrid { get; set; } = false;
@@ -60,6 +64,7 @@ namespace ProjectionMapper.Models
         public string SourcePath { get; set; } = string.Empty;
         public int TargetMonitorIndex { get; set; } = -1;
         public bool PlayAudio { get; set; } = false;
+        public double StillDurationSeconds { get; set; } = 30;
         public bool Visible { get; set; } = true;
         
         // Mesh layers associated with this imported video
@@ -83,6 +88,8 @@ namespace ProjectionMapper.Models
         public int TargetMonitorIndex { get; set; } = -1;
         public bool ShowOverlay { get; set; } = true;
         public bool IsLocked { get; set; }
+        public string? ArtworkAssetId { get; set; }
+        public ArtworkRegion ArtworkRegion { get; set; } = ArtworkRegion.Full;
         public string? PhotoSurfaceId { get; set; }
         public string? PhotoReferenceImageSha256 { get; set; }
         

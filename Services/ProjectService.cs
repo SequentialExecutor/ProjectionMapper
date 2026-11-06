@@ -60,7 +60,7 @@ namespace ProjectionMapper.Services
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, _jsonOptions), _jsonOptions)
                     ?? throw new InvalidDataException("Project snapshot is empty.");
                 Validate(snapshot);
-                snapshot.ProjectVersion = 3;
+                snapshot.ProjectVersion = 4;
                 snapshot.LastModified = DateTime.UtcNow;
                 ResolvePaths(snapshot, directory, relative: true);
                 Directory.CreateDirectory(directory);
@@ -125,7 +125,7 @@ namespace ProjectionMapper.Services
 
         private static void Validate(ProjectModel project)
         {
-            if (project.ProjectVersion < 1 || project.ProjectVersion > 3)
+            if (project.ProjectVersion < 1 || project.ProjectVersion > 4)
                 throw new InvalidDataException($"Project version {project.ProjectVersion} is unsupported. Use a compatible version of ProjectionMapper.");
             if (project.ImportedVideos == null || project.PlaylistGroups == null || project.Surfaces == null)
                 throw new InvalidDataException("Project collections cannot be null.");
@@ -140,12 +140,29 @@ namespace ProjectionMapper.Services
                     throw new InvalidDataException("Photo references need unique IDs.");
                 PhotoGeometry.ValidateMap(photo);
             }
+            if (project.ArtworkAssets == null || project.ArtworkAssets.Count > 32) throw new InvalidDataException("A project supports up to 32 accepted artwork images.");
+            var artworkIds = new System.Collections.Generic.HashSet<string>();
+            foreach (var asset in project.ArtworkAssets)
+            {
+                if (asset == null || !artworkIds.Add(asset.Id)) throw new InvalidDataException("Artwork assets need unique IDs.");
+                ArtworkRules.ValidateAsset(asset);
+            }
+            var renderIds = new System.Collections.Generic.HashSet<string>();
             foreach (var video in project.ImportedVideos)
             {
-                if (video == null || video.MeshLayers == null || string.IsNullOrWhiteSpace(video.SourcePath))
+                if (video == null || video.MeshLayers == null || string.IsNullOrWhiteSpace(video.SourcePath) || string.IsNullOrWhiteSpace(video.Id) || !renderIds.Add(video.Id))
                     throw new InvalidDataException("A video source or its mesh list is invalid.");
+                if (!double.IsFinite(video.StillDurationSeconds) || video.StillDurationSeconds < 1 || video.StillDurationSeconds > 86400)
+                    throw new InvalidDataException("Offline still durations must be between one second and one day.");
                 foreach (var mesh in video.MeshLayers)
                 {
+                    if (mesh == null || string.IsNullOrWhiteSpace(mesh.Id) || !renderIds.Add(mesh.Id))
+                        throw new InvalidDataException("Sources and meshes must have distinct, nonempty IDs.");
+                    if (mesh.ArtworkAssetId != null)
+                    {
+                        if (!artworkIds.Contains(mesh.ArtworkAssetId)) throw new InvalidDataException("An artwork assignment references a missing library image.");
+                        ArtworkRules.ValidateRegion(mesh.ArtworkRegion);
+                    }
                     if (mesh == null || mesh.MeshPoints == null || mesh.OutputMeshPoints == null ||
                         mesh.MeshPoints.Length != 8 || mesh.OutputMeshPoints.Length != 8 ||
                         mesh.MeshPoints.Any(p => !float.IsFinite(p)) || mesh.OutputMeshPoints.Any(p => !float.IsFinite(p)))

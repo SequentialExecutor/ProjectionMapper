@@ -12,6 +12,7 @@ using System.Windows.Media;
 using ProjectionMapper.Rendering;
 using ProjectionMapper.Services;
 using ProjectionMapper.Models;
+using ProjectionMapper.Utilities;
 using ProjectionMapper.ViewModels;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -46,6 +47,11 @@ namespace ProjectionMapper
 
         // Track current project file path
         private string? _currentProjectPath;
+        private ArtworkWindow? _artworkWindow;
+        private Guid _projectSession = Guid.NewGuid();
+        private readonly Dictionary<(string, string, ArtworkRegion), BitmapSource> _artworkCrops = new();
+        private readonly HashSet<string> _artworkPreviewIds = new();
+        private int _artworkPreviewGeneration;
         private ProjectRecoveryService? _recovery;
         private bool _closeApproved;
         private bool _closingInProgress;
@@ -190,6 +196,7 @@ namespace ProjectionMapper
                         ownsClose = true;
                         Debug.WriteLine("MainWindow: Window closing, checking for unsaved changes");
                         
+                        await CloseArtworkEditorAsync();
                         // Check actual persisted state, including edits without undo records.
                         RefreshDirtyState();
                         if (_vm.HasUnsavedChanges)
@@ -575,6 +582,7 @@ namespace ProjectionMapper
             {
                 Debug.WriteLine("MainWindow: Load project requested");
 
+                await CloseArtworkEditorAsync();
                 // Check actual persisted state, including edits without undo records.
                 RefreshDirtyState();
                 if (_vm.HasUnsavedChanges)
@@ -633,7 +641,7 @@ namespace ProjectionMapper
                 }
 
                 // Missing media must be resolved before the current project is cleared.
-                bool relinked = project.ImportedVideos.Any(v => !File.Exists(v.SourcePath));
+                bool relinked = project.ImportedVideos.Any(v => !File.Exists(v.SourcePath) && !(v.MeshLayers.Count > 0 && v.MeshLayers.All(m => m.ArtworkAssetId != null)));
                 if (!await RelinkMissingMediaAsync(project)) return;
 
                 // Clear current project state
@@ -662,6 +670,7 @@ namespace ProjectionMapper
             {
                 Debug.WriteLine("MainWindow: New project requested");
 
+                await CloseArtworkEditorAsync();
                 // Check actual persisted state, including edits without undo records.
                 RefreshDirtyState();
                 if (_vm.HasUnsavedChanges)
@@ -1155,16 +1164,35 @@ namespace ProjectionMapper
             }
         }
 
-        private void MeshLayers_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        private async void MeshLayers_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             try
             {
-                EnsureMonitorWindows();
+                if (_loadingProject) return;
+                var session = _projectSession;
+                if (e.OldItems != null)
+                    foreach (LayerViewModel mesh in e.OldItems)
+                    {
+                        if (mesh.Id == null) continue;
+                        _rendererManager.SetArtwork(mesh.Id, null); _rendererManager.SetArtwork(mesh.Id, null, preview: true);
+                        _artworkPreviewIds.Remove(mesh.Id);
+                        _rendererManager.RemoveMeshOverlayForMonitor(null, mesh.Id);
+                        await _videoService.UnregisterMeshLayerAsync(mesh.Id);
+                    }
+                if (e.NewItems != null)
+                    foreach (LayerViewModel mesh in e.NewItems)
+                    {
+                        var asset = _vm.ActiveProject?.ArtworkAssets.FirstOrDefault(a => a.Id == mesh.ArtworkAssetId);
+                        if (asset == null || mesh.Id == null) continue;
+                        var frame = await ArtworkCropAsync(asset, mesh.Model.ArtworkRegion);
+                        if (session != _projectSession || !ArtworkMeshes().Contains(mesh)) return;
+                        _rendererManager.SetArtwork(mesh.Id, frame);
+                        _videoService.RefreshMeshLayerRendering(mesh.Id);
+                    }
+                foreach (var source in _vm.ImportedVideos) ConfigureArtworkFallback(source);
+                EnsureMonitorWindows(force: true);
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"MainWindow: MeshLayers_CollectionChanged failed: {ex}");
-            }
+            catch (Exception ex) { Debug.WriteLine($"MainWindow: Mesh collection update failed: {ex.GetType().Name}"); }
         }
 
         /// <summary>
@@ -1568,7 +1596,7 @@ namespace ProjectionMapper
         {
             foreach (var video in project.ImportedVideos)
             {
-                if (File.Exists(video.SourcePath)) continue;
+                if (File.Exists(video.SourcePath) || (video.MeshLayers.Count > 0 && video.MeshLayers.All(m => m.ArtworkAssetId != null))) continue;
                 var replacement = await _fileDialog.ShowOpenFileDialogAsync(
                     $"Locate missing media: {Path.GetFileName(video.SourcePath)}", "Media files|*.*");
                 if (string.IsNullOrEmpty(replacement)) return false;
@@ -1614,7 +1642,7 @@ namespace ProjectionMapper
                 }
                 _recovery.Start(TimeSpan.FromSeconds(seconds), async () =>
                     await Dispatcher.InvokeAsync(() =>
-                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0 || _vm.ActiveProject?.PhotoMaps.Count > 0)
+                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0 || _vm.ActiveProject?.PhotoMaps.Count > 0 || _vm.ActiveProject?.ArtworkAssets.Count > 0)
                             ? BuildProjectModel() : null),
                     error => Dispatcher.BeginInvoke(() => _vm.StatusText = $"Recovery snapshot failed: {error}"));
             }
@@ -1632,9 +1660,9 @@ namespace ProjectionMapper
             var resolver = new DefaultJsonTypeInfoResolver();
             resolver.Modifiers.Add(type =>
             {
-                if (type.Type == typeof(PhotoMappingModel))
+                if (type.Type == typeof(PhotoMappingModel) || type.Type == typeof(ArtworkAsset) || type.Type == typeof(ArtworkReference))
                     foreach (var property in type.Properties)
-                        if (property.Name == nameof(PhotoMappingModel.ImageBase64)) property.ShouldSerialize = (_, _) => false;
+                        if (property.Name is "ImageBase64" or "ThumbnailBase64") property.ShouldSerialize = (_, _) => false;
             });
             var json = JsonSerializer.SerializeToNode(project, new JsonSerializerOptions { IncludeFields = true, TypeInfoResolver = resolver })!.AsObject();
             json.Remove(nameof(ProjectModel.LastModified));
@@ -1660,6 +1688,158 @@ namespace ProjectionMapper
             _savedFingerprint = ProjectFingerprint(saved);
             if (_vm.ActiveProject != null) _vm.ActiveProject.LastModified = saved.LastModified;
             RefreshDirtyState(); // Edits made while disk I/O ran still need saving.
+        }
+
+        private async Task CloseArtworkEditorAsync()
+        {
+            if (_artworkWindow is not { } window) return;
+            await window.StopAndCloseAsync();
+            if (ReferenceEquals(_artworkWindow, window)) _artworkWindow = null;
+        }
+        private async Task<BitmapSource> ArtworkCropAsync(ArtworkAsset asset, ArtworkRegion region)
+        {
+            var session = _projectSession;
+            var key = (asset.Id, asset.Sha256, region);
+            if (_artworkCrops.TryGetValue(key, out var existing)) return existing;
+            var frame = await ArtworkImaging.OnStaAsync(() => ArtworkImaging.Crop(asset, region));
+            if (session != _projectSession) throw new InvalidOperationException("The project changed while preparing artwork.");
+            _artworkCrops[key] = frame; return frame;
+        }
+        private void ConfigureArtworkFallback(ImportedVideoViewModel source)
+        {
+            if (source.HostLayer == null) return;
+            var meshes = source.MeshLayers;
+            if (meshes.Count > 0 && meshes.All(m => m.ArtworkAssetId != null) && meshes[0].Id != null &&
+                _rendererManager.TryGetArtwork(meshes[0].Id!, out var frame, includePreview: false) && frame != null)
+                _videoService.ConfigureStillFallback(source.Id, frame, source.HostLayer.StillDurationSeconds);
+            else _videoService.ConfigureStillFallback(source.Id, null);
+        }
+        private List<LayerViewModel> ArtworkMeshes() => _vm.ImportedVideos.SelectMany(source => source.MeshLayers).ToList();
+        private void OpenArtwork_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_artworkWindow?.IsVisible == true) { _artworkWindow.Activate(); return; }
+                var session = _projectSession;
+                void AssertSession()
+                {
+                    if (session != _projectSession) throw new InvalidOperationException("The project changed. Reopen the artwork library for this project.");
+                }
+                var downloadFolder = Path.Combine(string.IsNullOrEmpty(_currentProjectPath)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ProjectionMapper")
+                    : Path.GetDirectoryName(_currentProjectPath)!, "Artwork");
+                _artworkWindow = new ArtworkWindow(
+                    () =>
+                    {
+                        AssertSession();
+                        return ArtworkMeshes().Select(mesh =>
+                        {
+                            var points = mesh.OutputMeshPoints;
+                            var size = _rendererManager.GetMonitorRendererSize(mesh.TargetMonitorIndex);
+                            double width = size.Width > 0 ? size.Width : _rendererManager.OutputWidth;
+                            double height = size.Height > 0 ? size.Height : _rendererManager.OutputHeight;
+                            double Edge(int a, int b) => Math.Sqrt(Math.Pow((points[a].X - points[b].X) * width, 2) + Math.Pow((points[a].Y - points[b].Y) * height, 2));
+                            double aspect = (Edge(0, 1) + Edge(2, 3)) / Math.Max(1, Edge(0, 2) + Edge(1, 3));
+                            return new ArtworkSurface(mesh.Id!, mesh.Name, aspect);
+                        }).ToList();
+                    },
+                    () => { AssertSession(); return _vm.ActiveProject?.ArtworkAssets.Select(a => a.Copy()).ToList() ?? new(); },
+                    async (asset, bindings, seconds) =>
+                    {
+                        AssertSession(); ArtworkRules.ValidateAsset(asset);
+                        var meshes = ArtworkMeshes().ToDictionary(m => m.Id!);
+                        if (bindings.Any(b => !meshes.ContainsKey(b.MeshId))) throw new InvalidOperationException("A selected surface was removed. Refresh the surface list before applying.");
+                        var prepared = new Dictionary<string, BitmapSource>();
+                        foreach (var binding in bindings) prepared[binding.MeshId] = await ArtworkCropAsync(asset, binding.Region);
+                        AssertSession();
+                        meshes = ArtworkMeshes().ToDictionary(m => m.Id!);
+                        if (bindings.Any(b => !meshes.ContainsKey(b.MeshId))) throw new InvalidOperationException("A selected surface was removed while preparing artwork.");
+                        _vm.ActiveProject ??= new ProjectModel();
+                        if (!_vm.ActiveProject.ArtworkAssets.Any(a => a.Id == asset.Id))
+                        {
+                            if (_vm.ActiveProject.ArtworkAssets.Count >= 32) throw new InvalidOperationException("This project already contains 32 accepted artwork images.");
+                            _vm.ActiveProject.ArtworkAssets.Add(asset.Copy());
+                        }
+                        _vm.ActiveProject.ArtworkStyle = asset.Style; _vm.ActiveProject.ArtworkPalette = asset.Palette;
+                        var previous = bindings.Select(b => (Mesh: meshes[b.MeshId], Id: meshes[b.MeshId].ArtworkAssetId,
+                            Region: meshes[b.MeshId].Model.ArtworkRegion,
+                            Frame: _rendererManager.TryGetArtwork(b.MeshId, out var old, includePreview: false) ? old : null)).ToList();
+                        var sourceDurations = _vm.ImportedVideos.Where(v => v.MeshLayers.Any(m => bindings.Any(b => b.MeshId == m.Id)))
+                            .Where(v => v.HostLayer != null).Select(v => (Source: v, Before: v.HostLayer!.StillDurationSeconds)).ToList();
+                        void ApplyContent(bool restore)
+                        {
+                            AssertSession();
+                            for (int i = 0; i < previous.Count; i++)
+                            {
+                                var state = previous[i];
+                                state.Mesh.ArtworkAssetId = restore ? state.Id : asset.Id;
+                                state.Mesh.Model.ArtworkRegion = restore ? state.Region : bindings[i].Region;
+                                _rendererManager.SetArtwork(state.Mesh.Id!, restore ? state.Frame : prepared[state.Mesh.Id!]);
+                                _rendererManager.RemoveLayer(state.Mesh.Id);
+                                _videoService.RefreshMeshLayerRendering(state.Mesh.Id!);
+                            }
+                            foreach (var state in sourceDurations) state.Source.HostLayer!.StillDurationSeconds = restore ? state.Before : seconds;
+                            foreach (var source in _vm.ImportedVideos) ConfigureArtworkFallback(source);
+                            _vm.MarkProjectDirty();
+                        }
+                        ApplyContent(false);
+                        if (bindings.Count > 0) _vm.UndoRedoService.RecordAction(new ArtworkAssignmentAction("Assign generated artwork", () => ApplyContent(true), () => ApplyContent(false)));
+                        _vm.MarkProjectDirty(); _vm.StatusText = "Artwork retained in the project. Save to keep portable images and assignments.";
+                    },
+                    async (asset, bindings) =>
+                    {
+                        AssertSession();
+                        int generation = ++_artworkPreviewGeneration;
+                        var oldIds = _artworkPreviewIds.ToArray();
+                        _rendererManager.ClearArtwork(previewsOnly: true); _artworkPreviewIds.Clear();
+                        foreach (var id in oldIds) { _rendererManager.RemoveLayer(id); _videoService.RefreshMeshLayerRendering(id); }
+                        if (asset == null) return;
+                        var prepared = new Dictionary<string, BitmapSource>();
+                        foreach (var binding in bindings) prepared[binding.MeshId] = await ArtworkCropAsync(asset, binding.Region);
+                        AssertSession();
+                        if (generation != _artworkPreviewGeneration) return;
+                        var live = ArtworkMeshes().Select(m => m.Id).ToHashSet();
+                        if (bindings.Any(b => !live.Contains(b.MeshId))) throw new InvalidOperationException("A preview surface was removed. Refresh the surface list.");
+                        foreach (var binding in bindings)
+                        {
+                            _rendererManager.SetArtwork(binding.MeshId, prepared[binding.MeshId], preview: true);
+                            _artworkPreviewIds.Add(binding.MeshId); _videoService.RefreshMeshLayerRendering(binding.MeshId);
+                        }
+                    }, downloadFolder, _vm.ActiveProject?.ArtworkStyle ?? string.Empty, _vm.ActiveProject?.ArtworkPalette ?? string.Empty, _vm.SelectedMeshLayer?.Id) { Owner = this };
+                _artworkWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Artwork library failed: {ex.GetType().Name}");
+                MessageBox.Show($"Could not open artwork library: {ex.Message}", "Artwork", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private async void RestoreVideoArtwork_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var mesh = _vm.SelectedMeshLayer;
+                if (mesh?.ArtworkAssetId == null) return;
+                var source = _vm.ImportedVideos.First(v => v.MeshLayers.Contains(mesh));
+                if (!File.Exists(source.SourcePath))
+                {
+                    var path = await _fileDialog.ShowOpenFileDialogAsync("Locate original video to restore this surface", "Media files|*.*");
+                    if (string.IsNullOrEmpty(path)) return;
+                    source.SourcePath = path; if (source.HostLayer != null) source.HostLayer.SourcePath = path;
+                }
+                _artworkPreviewGeneration++;
+                var expectedAsset = mesh.ArtworkAssetId;
+                await _videoService.UnregisterLayerAsync(source.Id);
+                if (source.HostLayer != null && !await _videoService.RegisterLayerAsync(source.HostLayer, source.PlayAudio))
+                    throw new InvalidOperationException("The original video could not be started; the artwork assignment was retained.");
+                if (mesh.ArtworkAssetId != expectedAsset) { _vm.StatusText = "Artwork changed while video was starting; the newer selection was kept."; return; }
+                _rendererManager.SetArtwork(mesh.Id!, null, preview: true); _artworkPreviewIds.Remove(mesh.Id!);
+                _rendererManager.SetArtwork(mesh.Id!, null); mesh.ArtworkAssetId = null;
+                ConfigureArtworkFallback(source);
+                _rendererManager.RemoveLayer(mesh.Id); _videoService.RefreshMeshLayerRendering(mesh.Id!);
+                _vm.MarkProjectDirty();
+            }
+            catch (Exception ex) { MessageBox.Show($"Could not restore video content: {ex.Message}", "Artwork", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
 
         private async void OpenPhotoMap_Click(object sender, RoutedEventArgs e)
@@ -1771,13 +1951,16 @@ namespace ProjectionMapper
                     Name = _vm.ActiveProject?.Name ?? "Untitled Project",
                     CreatedAt = _vm.ActiveProject?.CreatedAt ?? DateTime.UtcNow,
                     LastModified = _vm.ActiveProject?.LastModified ?? DateTime.UtcNow,
-                    ProjectVersion = 3,
+                    ProjectVersion = 4,
                     PlaylistMode = _vm.IsPlaylistMode,
                     ShowMeshOverlay = PART_GlobalShowMeshOverlayCheckbox.IsChecked == true,
                     ShowCoordinateGrid = _vm.ActiveProject?.ShowCoordinateGrid ?? false,
                     InputZoom = _vm.InputZoom,
                     OutputZoom = _vm.OutputZoom,
-                    PhotoMaps = _vm.ActiveProject?.PhotoMaps ?? new List<PhotoMappingModel>()
+                    PhotoMaps = _vm.ActiveProject?.PhotoMaps ?? new List<PhotoMappingModel>(),
+                    ArtworkAssets = _vm.ActiveProject?.ArtworkAssets ?? new List<ArtworkAsset>(),
+                    ArtworkStyle = _vm.ActiveProject?.ArtworkStyle ?? string.Empty,
+                    ArtworkPalette = _vm.ActiveProject?.ArtworkPalette ?? string.Empty
                 };
 
                 // Preserve legacy surface metadata as well as the video/mesh editor state.
@@ -1793,6 +1976,7 @@ namespace ProjectionMapper
                         Name = imported.Name,
                         SourcePath = imported.SourcePath,
                         PlayAudio = imported.PlayAudio,
+                        StillDurationSeconds = imported.HostLayer?.StillDurationSeconds ?? 30,
                         TargetMonitorIndex = imported.HostLayer?.TargetMonitorIndex ?? -1,
                         Visible = imported.HostLayer?.Visible ?? true
                     };
@@ -1814,6 +1998,8 @@ namespace ProjectionMapper
                             // Access TargetMonitorIndex through the Model property
                             TargetMonitorIndex = mesh.Model.TargetMonitorIndex,
                             IsLocked = mesh.IsLocked,
+                            ArtworkAssetId = mesh.ArtworkAssetId,
+                            ArtworkRegion = mesh.Model.ArtworkRegion,
                             PhotoSurfaceId = mesh.Model.PhotoSurfaceId,
                             PhotoReferenceImageSha256 = mesh.Model.PhotoReferenceImageSha256,
                             ShowOverlay = mesh.ShowOverlay
@@ -1849,11 +2035,12 @@ namespace ProjectionMapper
                 // Detach legacy surfaces too; autosave and async Save must never retain
                 // mutable editor objects after returning to the dispatcher.
                 var photos = project.PhotoMaps.Select(photo => photo.Copy()).ToList();
-                project.PhotoMaps = new();
+                var artwork = project.ArtworkAssets.Select(asset => asset.Copy()).ToList();
+                project.PhotoMaps = new(); project.ArtworkAssets = new();
                 var options = new JsonSerializerOptions { IncludeFields = true };
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, options), options)
                     ?? throw new InvalidDataException("Could not capture project state.");
-                snapshot.PhotoMaps = photos;
+                snapshot.PhotoMaps = photos; snapshot.ArtworkAssets = artwork;
                 return snapshot;
             }
             catch (Exception ex)
@@ -1868,6 +2055,15 @@ namespace ProjectionMapper
             try
             {
                 _loadingProject = true;
+                _projectSession = Guid.NewGuid();
+                await CloseArtworkEditorAsync();
+                _rendererManager.ClearArtwork(); _artworkCrops.Clear(); _artworkPreviewIds.Clear();
+                _videoService.ClearStillFallbacks();
+                foreach (var mesh in _vm.ImportedVideos.SelectMany(v => v.MeshLayers))
+                {
+                    _rendererManager.RemoveLayer(mesh.Id);
+                    if (mesh.Id != null) await _videoService.UnregisterMeshLayerAsync(mesh.Id);
+                }
                 Debug.WriteLine("MainWindow: Clearing project state");
 
                 // Stop playback - pass re-enable looping flag to restore legacy mode behavior
@@ -1918,6 +2114,9 @@ namespace ProjectionMapper
                 // overwrite per-mesh visibility saved in the project.
                 PART_GlobalShowMeshOverlayCheckbox.IsChecked = project.ShowMeshOverlay;
                 _vm.IsPlaylistMode = project.PlaylistMode;
+                // Cache source frames during loading without flashing inactive artwork/video groups.
+                if (project.PlaylistMode) _videoService.EnablePlaylistMode();
+                else _videoService.DisablePlaylistMode();
                 _vm.InputZoom = project.InputZoom;
                 _vm.OutputZoom = project.OutputZoom;
 
@@ -1936,6 +2135,7 @@ namespace ProjectionMapper
                         Height = _rendererManager.OutputHeight,
                         Visible = videoData.Visible,
                         PlayAudio = videoData.PlayAudio,
+                        StillDurationSeconds = videoData.StillDurationSeconds,
                         TargetMonitorIndex = videoData.TargetMonitorIndex,
                         PreviewOnly = videoData.MeshLayers.Count > 0
                     };
@@ -1959,6 +2159,8 @@ namespace ProjectionMapper
                             Visible = meshData.Visible,
                             TargetMonitorIndex = meshData.TargetMonitorIndex,
                             IsLocked = meshData.IsLocked,
+                            ArtworkAssetId = meshData.ArtworkAssetId,
+                            ArtworkRegion = meshData.ArtworkRegion,
                             PhotoSurfaceId = meshData.PhotoSurfaceId,
                             PhotoReferenceImageSha256 = meshData.PhotoReferenceImageSha256,
                             ShowOverlay = meshData.ShowOverlay
@@ -1981,11 +2183,18 @@ namespace ProjectionMapper
 
                         var meshVm = new LayerViewModel(meshModel);
                         imported.MeshLayers.Add(meshVm);
+                        if (meshModel.ArtworkAssetId != null)
+                        {
+                            var asset = project.ArtworkAssets.First(a => a.Id == meshModel.ArtworkAssetId);
+                            var frame = await ArtworkCropAsync(asset, meshModel.ArtworkRegion);
+                            _rendererManager.SetArtwork(meshModel.Id!, frame);
+                        }
 
                         await _videoService.RegisterMeshLayerAsync(meshModel);
                     }
 
                     _vm.ImportedVideos.Add(imported);
+                    ConfigureArtworkFallback(imported);
                     await _videoService.RegisterLayerAsync(hostLayer, playAudio: videoData.PlayAudio);
                 }
 

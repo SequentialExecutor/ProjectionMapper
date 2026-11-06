@@ -65,6 +65,8 @@
         <!-- Tool bar -->
         <ToolBarTray DockPanel.Dock="Top" IsLocked="False">
             <ToolBar>
+                <Button Content="AI artwork…" Click="OpenArtwork_Click" ToolTip="Generate, download, preview and retain artwork with provider API tokens" />
+                <Separator />
                 <Button Content="Photo to map…" Click="OpenPhotoMap_Click" ToolTip="Import a scene reference and review AI-assisted or manually drawn surfaces" />
                 <Separator />
                 <Button Content="Calibrate output…" Click="OpenCalibration_Click" ToolTip="Identify projectors, position mesh corners in pixels, and lock mapping" />
@@ -269,6 +271,7 @@
                     <!-- Simple inspector for selected mesh layer -->
                     <StackPanel DataContext="{Binding SelectedMeshLayer}" Margin="0,8,0,0">
                         <CheckBox Content="Lock input/output mapping" IsChecked="{Binding IsLocked, Mode=TwoWay}" Margin="0,4" />
+                        <Button Content="Restore video content" Click="RestoreVideoArtwork_Click" Visibility="{Binding ArtworkAssetId, Converter={StaticResource NullToVisibilityConverter}}" HorizontalAlignment="Left" Margin="0,4" />
                         <TextBlock Text="Selected:" FontWeight="Bold" />
                         <TextBlock Text="{Binding Name}" />
                         <TextBlock Text="Source:" FontWeight="Bold" Margin="0,8,0,0" />

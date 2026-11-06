@@ -91,7 +91,7 @@ Project format version 3 stores normalized JPEG bytes, dimensions, reference IDs
 checksums, surface names/vertices, acceptance state, provider/model identifiers,
 original estimates, descriptions, response IDs, and creation times. Project loading
 validates reference checksums and geometry. Versions 1 and 2 still load; saving
-upgrades them to version 3. The preceding version-2 application rejects version-3
+upgrades them to the current project format (version 4, which also retains artwork). The preceding version-2 application rejects version-3
 files rather than opening and silently discarding the new photo data.
 
 Photos and descriptions are private project content; accepted results need no API

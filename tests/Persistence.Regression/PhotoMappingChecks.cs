@@ -96,7 +96,7 @@ internal static class PhotoMappingChecks
             var project = new ProjectModel { PhotoMaps = new() { photo } };
             Check(await service.SaveAsync(project, path), "photo-only project saves");
             var loaded = (await service.LoadAsync(path))!;
-            Check(loaded.ProjectVersion == 3 && loaded.PhotoMaps[0].ImageBase64 == photo.ImageBase64, "reference image round trip and schema version");
+            Check(loaded.ProjectVersion == 4 && loaded.PhotoMaps[0].ImageBase64 == photo.ImageBase64, "reference image round trip and schema version");
             Check(loaded.PhotoMaps[0].Surfaces[0].Points.SequenceEqual(quad) && loaded.PhotoMaps[0].Surfaces[0].Model == "gpt-4.1-mini", "accepted geometry and provenance round trip");
             await File.WriteAllTextAsync(path, "{\"ProjectVersion\":2,\"Name\":\"Existing\"}");
             Check((await service.LoadAsync(path))!.PhotoMaps.Count == 0, "existing version-2 projects remain readable");

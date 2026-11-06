@@ -21,6 +21,27 @@ namespace ProjectionMapper.Rendering
     public sealed class RendererManager : IDisposable
     {
         private readonly IRenderer _renderer;
+        private readonly ConcurrentDictionary<string, BitmapSource> _artwork = new();
+        private readonly ConcurrentDictionary<string, BitmapSource> _artworkPreview = new();
+        public void SetArtwork(string id, BitmapSource? frame, bool preview = false)
+        {
+            var store = preview ? _artworkPreview : _artwork;
+            if (frame == null) store.TryRemove(id, out _);
+            else
+            {
+                if (!frame.IsFrozen) throw new ArgumentException("Artwork frames must be frozen.");
+                store[id] = frame;
+            }
+        }
+        public bool TryGetArtwork(string id, out BitmapSource? frame, bool includePreview = true)
+        {
+            if ((includePreview && _artworkPreview.TryGetValue(id, out var candidate)) || _artwork.TryGetValue(id, out candidate)) { frame = candidate; return true; }
+            frame = null; return false;
+        }
+        public void ClearArtwork(bool previewsOnly = false)
+        {
+            _artworkPreview.Clear(); if (!previewsOnly) _artwork.Clear();
+        }
         private readonly ConcurrentDictionary<int, BitmapSource> _calibrationPatterns = new();
         private readonly ConcurrentDictionary<int, BitmapSource> _latestMonitorFrames = new();
         private readonly object _layerSubmissionLock = new();
@@ -548,6 +569,9 @@ namespace ProjectionMapper.Rendering
             {
                 lock (_layerSubmissionLock)
                 {
+                    // A null submission remains a clear/hide operation (including inactive playlist groups).
+                    // Artwork replaces content only; source cropping never distorts the generated texture.
+                    if (frame != null && TryGetArtwork(layerId, out var artwork)) frame = artwork;
                     // Get target monitor size for coordinate scaling
                     int monitorW = 0, monitorH = 0;
                     if (targetMonitorIndex >= 0 && _monitorRendererSizes.TryGetValue(targetMonitorIndex, out var monSize))

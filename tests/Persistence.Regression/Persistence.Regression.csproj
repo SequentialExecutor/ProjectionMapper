@@ -7,6 +7,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Run the real persistence implementation without requiring WPF or FFmpeg. -->
+    <Compile Include="../../Services/ArtworkGenerationService.cs" Link="ArtworkGenerationService.cs" />
+    <Compile Include="../../Services/StillPlaybackClock.cs" Link="StillPlaybackClock.cs" />
+    <Compile Include="../../Utilities/ArtworkRules.cs" Link="ArtworkRules.cs" />
     <Compile Include="../../Services/PhotoVisionService.cs" Link="PhotoVisionService.cs" />
     <Compile Include="../../Utilities/PhotoGeometry.cs" Link="PhotoGeometry.cs" />
     <Compile Include="../../Services/ProjectService.cs" Link="ProjectService.cs" />

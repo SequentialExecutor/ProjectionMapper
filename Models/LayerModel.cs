@@ -96,6 +96,9 @@ namespace ProjectionMapper.Models
         public bool ShowOverlay { get; set; } = true;
 
         /// <summary>Prevents accidental input/output geometry edits in the calibration editors.</summary>
+        public string? ArtworkAssetId { get; set; }
+        public ArtworkRegion ArtworkRegion { get; set; } = ArtworkRegion.Full;
+        public double StillDurationSeconds { get; set; } = 30;
         public bool IsLocked { get; set; }
         public string? PhotoSurfaceId { get; set; }
         public string? PhotoReferenceImageSha256 { get; set; }

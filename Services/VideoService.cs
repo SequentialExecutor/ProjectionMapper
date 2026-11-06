@@ -21,6 +21,39 @@ namespace ProjectionMapper.Services
     public sealed class VideoService : IVideoService, IDisposable
     {
         private readonly RendererManager _rendererManager;
+        private readonly ConcurrentDictionary<string, (BitmapSource Frame, double Seconds)> _stillFallbacks = new();
+        private readonly ConcurrentDictionary<string, StillPlaybackClock> _stillClocks = new();
+
+        public void ConfigureStillFallback(string sourceId, BitmapSource? frame, double seconds = 30)
+        {
+            if (frame == null) _stillFallbacks.TryRemove(sourceId, out _);
+            else
+            {
+                _stillFallbacks[sourceId] = (frame, seconds);
+                if (_stillClocks.TryGetValue(sourceId, out var clock)) clock.SetDuration(TimeSpan.FromSeconds(seconds));
+            }
+        }
+        public void ClearStillFallbacks() => _stillFallbacks.Clear();
+        private void ResumeStill(string id, bool restart)
+        {
+            if (!_stillClocks.TryGetValue(id, out var clock) || !_decoders.TryGetValue(id, out var entry)) return;
+            if (entry.decoder != null || (!restart && !entry.isPaused)) return;
+            if (!_decoders.TryUpdate(id, (null, null, entry.model, entry.lastFrame, false, TimeSpan.Zero), entry)) return;
+            clock.SetLoop(_globalLoopingEnabled); clock.Start(restart);
+            InvokeOnUi(() =>
+            {
+                if (!_decoders.TryGetValue(id, out var current) || !ReferenceEquals(current.model, entry.model)) return;
+                RefreshAllMeshLayersForSource(id);
+                if (entry.lastFrame != null) FrameDecoded?.Invoke(id, entry.lastFrame);
+            });
+        }
+        private void PauseStill(string id)
+        {
+            if (!_stillClocks.TryGetValue(id, out var clock)) return;
+            clock.Pause();
+            if (_decoders.TryGetValue(id, out var entry) && entry.decoder == null)
+                _decoders.TryUpdate(id, (null, null, entry.model, entry.lastFrame, true, TimeSpan.Zero), entry);
+        }
 
         // LayerId -> (decoder, cts, model, lastFrame, isPaused, savedPosition)
         private readonly ConcurrentDictionary<string, (FFmpegUnifiedDecoder? decoder, CancellationTokenSource? cts, LayerModel model, BitmapSource? lastFrame, bool isPaused, TimeSpan savedPosition)> _decoders
@@ -97,6 +130,7 @@ namespace ProjectionMapper.Services
                     _activeRenderLayers[id] = true;
                 }
             }
+            foreach (var id in _stillClocks.Keys) InvokeOnUi(() => RefreshAllMeshLayersForSource(id));
             Debug.WriteLine($"VideoService: Set {_activeRenderLayers.Count} layers as active for rendering");
         }
 
@@ -145,7 +179,24 @@ namespace ProjectionMapper.Services
         {
             if (layer == null) throw new ArgumentNullException(nameof(layer));
             if (string.IsNullOrWhiteSpace(layer.SourcePath)) return false;
-            if (!File.Exists(layer.SourcePath)) throw new FileNotFoundException("Source video not found", layer.SourcePath);
+            if (!File.Exists(layer.SourcePath))
+            {
+                if (layer.Id != null && _stillFallbacks.TryGetValue(layer.Id, out var still))
+                {
+                    await UnregisterLayerAsync(layer.Id).ConfigureAwait(false);
+                    _decoders[layer.Id] = (null, null, layer, still.Frame, false, TimeSpan.Zero);
+                    StillPlaybackClock? clock = null;
+                    clock = new StillPlaybackClock(TimeSpan.FromSeconds(still.Seconds), () =>
+                    {
+                        if (_stillClocks.TryGetValue(layer.Id, out var current) && ReferenceEquals(clock, current) &&
+                            _decoders.TryGetValue(layer.Id, out var entry) && !entry.isPaused) OnVideoCompleted(layer.Id);
+                    });
+                    _stillClocks[layer.Id] = clock;
+                    ResumeStill(layer.Id, restart: true);
+                    return true;
+                }
+                throw new FileNotFoundException("Source video not found", layer.SourcePath);
+            }
 
             string ffmpegExecutable = ResolveFfmpegExecutable();
 
@@ -660,13 +711,9 @@ namespace ProjectionMapper.Services
                 // The Visible property only controls overlay (bounding box/handles) visibility in the UI
 
                 // Get the source decoder's last frame
-                if (!_decoders.TryGetValue(mesh.SourceId, out var tuple) || tuple.lastFrame == null)
-                {
-                    Debug.WriteLine($"VideoService.RefreshMeshLayerRendering: No cached frame for source {mesh.SourceId}");
-                    return;
-                }
-
-                var lastFrame = tuple.lastFrame;
+                _decoders.TryGetValue(mesh.SourceId, out var tuple);
+                BitmapSource? lastFrame = _rendererManager.TryGetArtwork(meshLayerId, out var art) ? art : tuple.lastFrame;
+                if (lastFrame == null) return;
                 Debug.WriteLine($"VideoService.RefreshMeshLayerRendering: Refreshing mesh {meshLayerId} with cached frame from {mesh.SourceId}");
 
                 // Re-process the cached frame through mesh rendering
@@ -803,6 +850,7 @@ namespace ProjectionMapper.Services
         public async Task UnregisterLayerAsync(string layerId)
         {
             if (string.IsNullOrEmpty(layerId)) return;
+            if (_stillClocks.TryRemove(layerId, out var clock)) clock.Dispose();
             if (_decoders.TryRemove(layerId, out var tuple))
             {
                 try
@@ -826,6 +874,7 @@ namespace ProjectionMapper.Services
         public async Task PauseLayerAsync(string layerId)
         {
             if (string.IsNullOrEmpty(layerId)) return;
+            if (_stillClocks.ContainsKey(layerId)) { PauseStill(layerId); return; }
 
             Debug.WriteLine($"VideoService.PauseLayerAsync: Attempting to pause layer {layerId}");
 
@@ -877,6 +926,7 @@ namespace ProjectionMapper.Services
         public async Task ResumeLayerAsync(string layerId)
         {
             if (string.IsNullOrEmpty(layerId)) return;
+            if (_stillClocks.ContainsKey(layerId)) { ResumeStill(layerId, restart: false); return; }
 
             Debug.WriteLine($"VideoService.ResumeLayerAsync: Attempting to resume layer {layerId}");
 
@@ -1035,6 +1085,7 @@ namespace ProjectionMapper.Services
         /// <returns>True if the layer should play audio.</returns>
         public bool ShouldPlayAudio(string layerId)
         {
+            if (_stillClocks.ContainsKey(layerId)) return false;
             try
             {
                 if (string.IsNullOrEmpty(layerId)) return false;
@@ -1126,6 +1177,7 @@ namespace ProjectionMapper.Services
             try
             {
                 lock (_loopingLock) { _globalLoopingEnabled = false; }
+                foreach (var clock in _stillClocks.Values) clock.SetLoop(false);
                 foreach (var kv in _decoders.ToArray())
                 {
                     try 
@@ -1148,6 +1200,7 @@ namespace ProjectionMapper.Services
             try
             {
                 lock (_loopingLock) { _globalLoopingEnabled = true; }
+                foreach (var clock in _stillClocks.Values) clock.SetLoop(true);
                 foreach (var kv in _decoders.ToArray())
                 {
                     try 
@@ -1353,6 +1406,7 @@ namespace ProjectionMapper.Services
         public async Task SoftPauseLayerAsync(string layerId)
         {
             if (string.IsNullOrEmpty(layerId)) return;
+            if (_stillClocks.ContainsKey(layerId)) { PauseStill(layerId); return; }
 
             if (!_decoders.TryGetValue(layerId, out var t))
             {
@@ -1646,6 +1700,7 @@ namespace ProjectionMapper.Services
         public async Task FastResumeLayerAsync(string layerId)
         {
             if (string.IsNullOrEmpty(layerId)) return;
+            if (_stillClocks.ContainsKey(layerId)) { ResumeStill(layerId, restart: true); return; }
 
             Debug.WriteLine($"VideoService.FastResumeLayerAsync: Fast resuming layer {layerId}");
 
@@ -1791,6 +1846,8 @@ namespace ProjectionMapper.Services
                         Debug.WriteLine($"VideoService.Dispose: Failed to dispose decoder {kv.Key}: {ex}");
                     }
                 }
+                foreach (var clock in _stillClocks.Values) clock.Dispose();
+                _stillClocks.Clear(); _stillFallbacks.Clear();
                 _decoders.Clear();
                 _meshLayers.Clear();
                 _lastFrameSent.Clear();

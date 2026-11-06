@@ -160,6 +160,12 @@ namespace ProjectionMapper.ViewModels
             }
         }
 
+        public string? ArtworkAssetId
+        {
+            get => _model.ArtworkAssetId;
+            set { if (_model.ArtworkAssetId == value) return; _model.ArtworkAssetId = value; RaisePropertyChanged(); }
+        }
+
         public bool IsLocked
         {
             get => _model.IsLocked;
