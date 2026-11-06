@@ -90,6 +90,7 @@ try
     Check(Math.Abs(snapped.X * 1920 - 100) < .001 && Math.Abs(snapped.Y * 1080 - 210) < .001, "pixel snapping uses output dimensions");
     var clamped = QuadGeometry.FromPixels(-10, 9999, 1920, 1080);
     Check(clamped == new Vector2(0, 1), "coordinates clamp to output bounds");
+    await PhotoMappingChecks.Run();
     Console.WriteLine("Persistence regression checks passed.");
 }
 catch (Exception ex)

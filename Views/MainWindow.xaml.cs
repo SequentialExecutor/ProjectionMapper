@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -500,7 +501,8 @@ namespace ProjectionMapper
                 var project = BuildProjectModel();
 
                 // Save project
-                var success = await _projectService.SaveAsync(project, _currentProjectPath);
+                var savePath = _currentProjectPath;
+                var success = await Task.Run(() => _projectService.SaveAsync(project, savePath));
 
                 if (success)
                 {
@@ -544,7 +546,7 @@ namespace ProjectionMapper
                 var project = BuildProjectModel();
 
                 // Save project
-                var success = await _projectService.SaveAsync(project, path);
+                var success = await Task.Run(() => _projectService.SaveAsync(project, path));
 
                 if (success)
                 {
@@ -1612,7 +1614,7 @@ namespace ProjectionMapper
                 }
                 _recovery.Start(TimeSpan.FromSeconds(seconds), async () =>
                     await Dispatcher.InvokeAsync(() =>
-                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0)
+                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0 || _vm.ActiveProject?.PhotoMaps.Count > 0)
                             ? BuildProjectModel() : null),
                     error => Dispatcher.BeginInvoke(() => _vm.StatusText = $"Recovery snapshot failed: {error}"));
             }
@@ -1625,7 +1627,16 @@ namespace ProjectionMapper
 
         private static string ProjectFingerprint(ProjectModel project)
         {
-            var json = JsonSerializer.SerializeToNode(project, new JsonSerializerOptions { IncludeFields = true })!.AsObject();
+            // References have validated checksums. Compare those instead of serializing
+            // megabytes of immutable photo bytes on the dispatcher for every dirty check.
+            var resolver = new DefaultJsonTypeInfoResolver();
+            resolver.Modifiers.Add(type =>
+            {
+                if (type.Type == typeof(PhotoMappingModel))
+                    foreach (var property in type.Properties)
+                        if (property.Name == nameof(PhotoMappingModel.ImageBase64)) property.ShouldSerialize = (_, _) => false;
+            });
+            var json = JsonSerializer.SerializeToNode(project, new JsonSerializerOptions { IncludeFields = true, TypeInfoResolver = resolver })!.AsObject();
             json.Remove(nameof(ProjectModel.LastModified));
             return json.ToJsonString();
         }
@@ -1649,6 +1660,73 @@ namespace ProjectionMapper
             _savedFingerprint = ProjectFingerprint(saved);
             if (_vm.ActiveProject != null) _vm.ActiveProject.LastModified = saved.LastModified;
             RefreshDirtyState(); // Edits made while disk I/O ran still need saving.
+        }
+
+        private async void OpenPhotoMap_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var window = new PhotoMapWindow(_vm.ActiveProject?.PhotoMaps ?? new List<PhotoMappingModel>(), _vm.SelectedImportedVideo?.HostLayer != null) { Owner = this };
+                if (window.ShowDialog() != true) return;
+                _vm.ActiveProject ??= new ProjectModel { Name = "Untitled Project" };
+                _vm.ActiveProject.PhotoMaps = window.ResultMaps;
+                _vm.MarkProjectDirty();
+                int created = 0, skipped = 0;
+                if (window.CreateMeshesRequested && _vm.SelectedImportedVideo?.HostLayer is { } host)
+                {
+                    var source = _vm.SelectedImportedVideo;
+                    foreach (var photo in window.ResultMaps)
+                    foreach (var surface in photo.Surfaces.Where(s => s.Accepted))
+                    {
+                        // Reopening a photo map must not duplicate or move already-calibrated meshes.
+                        if (source.MeshLayers.Any(m => m.Model.PhotoSurfaceId == surface.Id)) continue;
+                        Vector2[] quad;
+                        try { quad = ProjectionMapper.Utilities.PhotoGeometry.ToOutputQuad(surface.Points); }
+                        catch (System.IO.InvalidDataException) { skipped++; continue; }
+                        var model = new LayerModel
+                        {
+                            Id = Guid.NewGuid().ToString("N"), Name = surface.Name, SourceId = host.Id,
+                            Width = _rendererManager.OutputWidth, Height = _rendererManager.OutputHeight,
+                            OutputMeshPoints = quad, TargetMonitorIndex = -1,
+                            PhotoSurfaceId = surface.Id, PhotoReferenceImageSha256 = photo.ImageSha256
+                        };
+                        var layer = new LayerViewModel(model);
+                        source.MeshLayers.Add(layer);
+                        await _videoService.RegisterMeshLayerAsync(model);
+                        _vm.UndoRedoService.RecordAction(new CreateMeshAction(source, layer, async restored =>
+                        {
+                            try
+                            {
+                                if (restored == null)
+                                {
+                                    await _videoService.UnregisterMeshLayerAsync(model.Id);
+                                    _rendererManager.RemoveMeshOverlayForMonitor(null, model.Id);
+                                }
+                                else await _videoService.RegisterMeshLayerAsync(restored);
+                                EnsureMonitorWindows(force: true);
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Photo mesh history update failed: {ex.GetType().Name}");
+                                _vm.StatusText = "Could not update photo mesh history; reopen the saved project to restore a consistent state.";
+                            }
+                        }));
+                        _vm.SelectedMeshLayer = layer;
+                        created++;
+                    }
+                    if (created > 0)
+                    {
+                        host.PreviewOnly = true;
+                        _rendererManager.RemoveLayer(host.Id);
+                    }
+                }
+                _vm.StatusText = $"Photo maps updated. {created} preview-only meshes created; {skipped} non-quad surfaces kept as annotations. Save the project, then calibrate and assign an output.";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Photo mapping could not be applied: {ex.GetType().Name}");
+                MessageBox.Show($"Could not apply photo mapping: {ex.Message}", "Photo Mapping", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void OpenCalibration_Click(object sender, RoutedEventArgs e)
@@ -1693,12 +1771,13 @@ namespace ProjectionMapper
                     Name = _vm.ActiveProject?.Name ?? "Untitled Project",
                     CreatedAt = _vm.ActiveProject?.CreatedAt ?? DateTime.UtcNow,
                     LastModified = _vm.ActiveProject?.LastModified ?? DateTime.UtcNow,
-                    ProjectVersion = 2,
+                    ProjectVersion = 3,
                     PlaylistMode = _vm.IsPlaylistMode,
                     ShowMeshOverlay = PART_GlobalShowMeshOverlayCheckbox.IsChecked == true,
                     ShowCoordinateGrid = _vm.ActiveProject?.ShowCoordinateGrid ?? false,
                     InputZoom = _vm.InputZoom,
-                    OutputZoom = _vm.OutputZoom
+                    OutputZoom = _vm.OutputZoom,
+                    PhotoMaps = _vm.ActiveProject?.PhotoMaps ?? new List<PhotoMappingModel>()
                 };
 
                 // Preserve legacy surface metadata as well as the video/mesh editor state.
@@ -1735,6 +1814,8 @@ namespace ProjectionMapper
                             // Access TargetMonitorIndex through the Model property
                             TargetMonitorIndex = mesh.Model.TargetMonitorIndex,
                             IsLocked = mesh.IsLocked,
+                            PhotoSurfaceId = mesh.Model.PhotoSurfaceId,
+                            PhotoReferenceImageSha256 = mesh.Model.PhotoReferenceImageSha256,
                             ShowOverlay = mesh.ShowOverlay
                         };
 
@@ -1767,9 +1848,13 @@ namespace ProjectionMapper
 
                 // Detach legacy surfaces too; autosave and async Save must never retain
                 // mutable editor objects after returning to the dispatcher.
+                var photos = project.PhotoMaps.Select(photo => photo.Copy()).ToList();
+                project.PhotoMaps = new();
                 var options = new JsonSerializerOptions { IncludeFields = true };
-                return JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, options), options)
+                var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, options), options)
                     ?? throw new InvalidDataException("Could not capture project state.");
+                snapshot.PhotoMaps = photos;
+                return snapshot;
             }
             catch (Exception ex)
             {
@@ -1795,6 +1880,11 @@ namespace ProjectionMapper
                     DetachImportedVideoHandlers(video);
                 }
                 _vm.ImportedVideos.Clear();
+                _vm.ClearMeshSelection();
+                _vm.SelectedMeshLayer = null;
+                _vm.SelectedImportedVideo = null;
+                // Undo actions refer to source/model instances from this project only.
+                _vm.UndoRedoService.Clear();
 
                 // Clear playlist groups
                 _vm.PlaylistGroups.Clear();
@@ -1869,6 +1959,8 @@ namespace ProjectionMapper
                             Visible = meshData.Visible,
                             TargetMonitorIndex = meshData.TargetMonitorIndex,
                             IsLocked = meshData.IsLocked,
+                            PhotoSurfaceId = meshData.PhotoSurfaceId,
+                            PhotoReferenceImageSha256 = meshData.PhotoReferenceImageSha256,
                             ShowOverlay = meshData.ShowOverlay
                         };
 

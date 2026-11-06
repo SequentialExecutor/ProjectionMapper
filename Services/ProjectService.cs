@@ -60,7 +60,7 @@ namespace ProjectionMapper.Services
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, _jsonOptions), _jsonOptions)
                     ?? throw new InvalidDataException("Project snapshot is empty.");
                 Validate(snapshot);
-                snapshot.ProjectVersion = 2;
+                snapshot.ProjectVersion = 3;
                 snapshot.LastModified = DateTime.UtcNow;
                 ResolvePaths(snapshot, directory, relative: true);
                 Directory.CreateDirectory(directory);
@@ -125,12 +125,21 @@ namespace ProjectionMapper.Services
 
         private static void Validate(ProjectModel project)
         {
-            if (project.ProjectVersion < 1 || project.ProjectVersion > 2)
+            if (project.ProjectVersion < 1 || project.ProjectVersion > 3)
                 throw new InvalidDataException($"Project version {project.ProjectVersion} is unsupported. Use a compatible version of ProjectionMapper.");
             if (project.ImportedVideos == null || project.PlaylistGroups == null || project.Surfaces == null)
                 throw new InvalidDataException("Project collections cannot be null.");
             if (!double.IsFinite(project.InputZoom) || project.InputZoom <= 0 || !double.IsFinite(project.OutputZoom) || project.OutputZoom <= 0)
                 throw new InvalidDataException("Project zoom must be a positive finite number.");
+            if (project.PhotoMaps == null || project.PhotoMaps.Count > 8)
+                throw new InvalidDataException("A project supports up to eight photo references.");
+            var photoIds = new System.Collections.Generic.HashSet<string>();
+            foreach (var photo in project.PhotoMaps)
+            {
+                if (photo == null || string.IsNullOrWhiteSpace(photo.Id) || !photoIds.Add(photo.Id))
+                    throw new InvalidDataException("Photo references need unique IDs.");
+                PhotoGeometry.ValidateMap(photo);
+            }
             foreach (var video in project.ImportedVideos)
             {
                 if (video == null || video.MeshLayers == null || string.IsNullOrWhiteSpace(video.SourcePath))

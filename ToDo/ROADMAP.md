@@ -129,6 +129,8 @@ Dependency: Milestones 1–2.
 
 Goal: turn a reference photograph into editable projection surface proposals.
 
+Implementation: see [Photo to map](PHOTO-TO-MAP.md) for the assisted workflow, tests, limits, and live-provider acceptance steps.
+
 Work:
 - Import a scene photograph with orientation and resolution handling.
 - Let users mark or describe target objects; request named polygon/mask proposals from a vision provider.

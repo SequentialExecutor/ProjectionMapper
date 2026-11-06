@@ -97,6 +97,8 @@ namespace ProjectionMapper.Models
 
         /// <summary>Prevents accidental input/output geometry edits in the calibration editors.</summary>
         public bool IsLocked { get; set; }
+        public string? PhotoSurfaceId { get; set; }
+        public string? PhotoReferenceImageSha256 { get; set; }
 
         /// <summary>
         /// When true, the layer's audio should be played alongside decoded video frames (if supported).

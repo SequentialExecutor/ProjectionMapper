@@ -1040,6 +1040,8 @@ namespace ProjectionMapper.ViewModels
                     Y = selectedMesh.Y,
                     TargetMonitorIndex = selectedMesh.TargetMonitorIndex,
                     IsLocked = selectedMesh.IsLocked,
+                    PhotoSurfaceId = selectedMesh.Model.PhotoSurfaceId,
+                    PhotoReferenceImageSha256 = selectedMesh.Model.PhotoReferenceImageSha256,
                     Opacity = selectedMesh.Opacity
                 };
 
@@ -1106,6 +1108,8 @@ namespace ProjectionMapper.ViewModels
                     Visible = true,
                     TargetMonitorIndex = copiedMesh.TargetMonitorIndex,
                     IsLocked = copiedMesh.IsLocked,
+                    PhotoSurfaceId = copiedMesh.PhotoSurfaceId,
+                    PhotoReferenceImageSha256 = copiedMesh.PhotoReferenceImageSha256,
                     Opacity = copiedMesh.Opacity
                 };
 

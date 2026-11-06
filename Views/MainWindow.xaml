@@ -65,6 +65,8 @@
         <!-- Tool bar -->
         <ToolBarTray DockPanel.Dock="Top" IsLocked="False">
             <ToolBar>
+                <Button Content="Photo to map…" Click="OpenPhotoMap_Click" ToolTip="Import a scene reference and review AI-assisted or manually drawn surfaces" />
+                <Separator />
                 <Button Content="Calibrate output…" Click="OpenCalibration_Click" ToolTip="Identify projectors, position mesh corners in pixels, and lock mapping" />
                 <Separator />
                 <Button Content="New" Command="{Binding NewProjectCommand}" ToolTip="New Project (Ctrl+N)" />

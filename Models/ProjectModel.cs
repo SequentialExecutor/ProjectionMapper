@@ -17,9 +17,9 @@ namespace ProjectionMapper.Models
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups.
+        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references and proposals.
         /// </summary>
-        public int ProjectVersion { get; set; } = 2;
+        public int ProjectVersion { get; set; } = 3;
 
         // Make surfaces observable for UI binding
         [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
@@ -39,6 +39,9 @@ namespace ProjectionMapper.Models
         /// When false, all videos play in legacy mode (simultaneously, looping independently).
         /// </summary>
         public bool PlaylistMode { get; set; } = false;
+
+        // Embedded normalized scene references keep photo mapping and recovery portable.
+        public List<PhotoMappingModel> PhotoMaps { get; set; } = new();
 
         // Global project settings
         public bool ShowMeshOverlay { get; set; } = true;
@@ -80,6 +83,8 @@ namespace ProjectionMapper.Models
         public int TargetMonitorIndex { get; set; } = -1;
         public bool ShowOverlay { get; set; } = true;
         public bool IsLocked { get; set; }
+        public string? PhotoSurfaceId { get; set; }
+        public string? PhotoReferenceImageSha256 { get; set; }
         
         // Mesh points stored as flat arrays for JSON serialization
         public float[] MeshPoints { get; set; } = new float[] { 0, 0, 1, 0, 0, 1, 1, 1 }; // 4 points * 2 coords (X,Y)

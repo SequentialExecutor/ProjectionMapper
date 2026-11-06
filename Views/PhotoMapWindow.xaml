@@ -1,0 +1,83 @@
+<Window x:Class="ProjectionMapper.Views.PhotoMapWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Photo to map — assisted surface mapping" Width="1200" Height="820" MinWidth="1000" MinHeight="650"
+        WindowStartupLocation="CenterOwner" KeyDown="Window_KeyDown">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="DarkBlue" Margin="0,0,0,8" />
+            <CheckBox x:Name="CreateMeshes" Content="Create preview-only meshes from accepted convex quads for the selected video source" />
+            <CheckBox x:Name="Uncalibrated" Content="I understand photo positions are only a starting point; I will align the meshes to the projector manually." Margin="0,5" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="CancelAnalysis" Content="Cancel analysis" Click="Cancel_Click" IsEnabled="False" Padding="14,5" Margin="6,0" />
+                <Button x:Name="SaveMap" Content="Save photo maps to project" Click="Save_Click" Padding="14,5" />
+            </StackPanel>
+        </StackPanel>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="310" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="Scene references" FontSize="18" FontWeight="SemiBold" />
+                    <ComboBox x:Name="References" DisplayMemberPath="OriginalFileName" SelectionChanged="Reference_Changed" Margin="0,8" />
+                    <Button x:Name="ImportPhoto" Content="Import scene photo…" Click="Import_Click" HorizontalAlignment="Left" />
+                    <TextBlock Text="Up to eight references are embedded in the project. Photos are resized, oriented, and stripped of metadata before upload." TextWrapping="Wrap" Margin="0,8" />
+                    <StackPanel x:Name="RequestFields">
+                        <TextBlock Text="Optional AI proposals · OpenAI" FontWeight="Bold" Margin="0,8" />
+                        <TextBlock Text="Describe the objects to map" />
+                        <TextBox x:Name="Description" Text="Find the visible planar surfaces suitable for projection and name each object." AcceptsReturn="True" TextWrapping="Wrap" Height="64" MaxLength="2000" Margin="0,5" />
+                        <TextBlock Text="Vision model" />
+                        <TextBox x:Name="ModelName" Text="gpt-4.1-mini" MaxLength="120" Margin="0,5" />
+                        <TextBlock Text="OpenAI API key (this dialog only)" />
+                        <PasswordBox x:Name="ApiKey" Margin="0,5" />
+                        <CheckBox x:Name="UploadConsent" Margin="0,5">
+                            <TextBlock Text="Send the selected normalized photo and description to OpenAI. API charges apply at my account's pricing; no cost estimate is available here." TextWrapping="Wrap" />
+                        </CheckBox>
+                        <Button Content="Analyze photo and add proposals" Click="Analyze_Click" Margin="0,5" />
+                    </StackPanel>
+                    <Separator Margin="0,10" />
+                    <TextBlock Text="Surfaces in this photo" FontWeight="Bold" />
+                    <ListBox x:Name="Surfaces" Height="140" DisplayMemberPath="Name" SelectionChanged="Surface_Changed" Margin="0,6" />
+                    <TextBlock x:Name="Provenance" TextWrapping="Wrap" FontSize="11" Margin="0,4" />
+                </StackPanel>
+            </ScrollViewer>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <StackPanel x:Name="EditorTools" Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Draw polygon" Click="Draw_Click" Margin="0,0,6,0" />
+                    <Button Content="Finish polygon" Click="Finish_Click" Margin="0,0,6,0" />
+                    <Button Content="Delete" Click="Delete_Click" Margin="0,0,6,0" />
+                    <Button Content="Undo" Click="Undo_Click" Margin="0,0,6,0" />
+                    <Button Content="Redo" Click="Redo_Click" />
+                </StackPanel>
+                <Border Grid.Row="1" Background="#20242A" ClipToBounds="True">
+                    <Viewbox x:Name="PhotoView" Stretch="Uniform">
+                        <Canvas x:Name="PhotoCanvas" Width="800" Height="500" Focusable="True" Background="Transparent"
+                                MouseLeftButtonDown="Photo_MouseDown" MouseMove="Photo_MouseMove" MouseLeftButtonUp="Photo_MouseUp" />
+                    </Viewbox>
+                </Border>
+                <StackPanel Grid.Row="2" x:Name="Properties" Margin="0,10,0,0">
+                    <TextBlock Text="Photo coordinates (%) · these are not projector coordinates. Drag a vertex or enter its position." TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8">
+                        <TextBox x:Name="SurfaceName" Width="210" MaxLength="120" />
+                        <Button Content="Rename" Click="Rename_Click" Margin="6,0" />
+                        <CheckBox x:Name="Accepted" Content="Reviewed / accepted" Click="Accept_Click" VerticalAlignment="Center" Margin="12,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <ComboBox x:Name="Vertex" Width="65" SelectionChanged="Vertex_Changed" />
+                        <TextBlock Text="X %" VerticalAlignment="Center" Margin="8,0,4,0" /><TextBox x:Name="XValue" Width="70" />
+                        <TextBlock Text="Y %" VerticalAlignment="Center" Margin="8,0,4,0" /><TextBox x:Name="YValue" Width="70" />
+                        <Button Content="Apply vertex" Click="VertexApply_Click" Margin="8,0" />
+                        <Button Content="Fit bounding quad" Click="Fit_Click" ToolTip="Adds a rectangle around this outline. This is an approximation, not a shape mask." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6">
+                        <TextBlock Text="Split selected vertex to" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="SplitVertex" Width="65" />
+                        <Button Content="Split surface" Click="Split_Click" Margin="8,0" />
+                        <TextBlock Text="Escape cancels drawing. Ctrl+Z / Ctrl+Y undo photo edits." VerticalAlignment="Center" FontSize="11" Margin="6,0" />
+                    </StackPanel>
+                    <TextBlock Text="Only accepted convex quads become meshes in this version. Other polygons remain editable project annotations until polygon-mask support is added. Editing a photo map does not move existing projection meshes." TextWrapping="Wrap" FontSize="11" Margin="0,6,0,0" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>
