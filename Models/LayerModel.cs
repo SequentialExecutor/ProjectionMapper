@@ -55,7 +55,7 @@ namespace ProjectionMapper.Models
         /// Values are normalized (0..1) relative to source dimensions.
         /// Defaults to full-rect.
         /// </summary>
-        public Vector2[] MeshPoints { get; } = new[]
+        public Vector2[] MeshPoints { get; set; } = new[]
         {
             new Vector2(0f, 0f), // TL
             new Vector2(1f, 0f), // TR
@@ -70,7 +70,7 @@ namespace ProjectionMapper.Models
         /// Order: TopLeft, TopRight, BottomLeft, BottomRight
         /// Defaults to a small centered rectangle (~1/5 of output area) for easier initial placement.
         /// </summary>
-        public Vector2[] OutputMeshPoints { get; } = new[]
+        public Vector2[] OutputMeshPoints { get; set; } = new[]
         {
             new Vector2(0.3f, 0.3f), // TL - centered, ~40% width/height
             new Vector2(0.7f, 0.3f), // TR

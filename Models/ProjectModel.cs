@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
@@ -21,6 +22,7 @@ namespace ProjectionMapper.Models
         public int ProjectVersion { get; set; } = 2;
 
         // Make surfaces observable for UI binding
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
         public ObservableCollection<SurfaceModel> Surfaces { get; } = new ObservableCollection<SurfaceModel>();
 
         // Imported videos collection for project persistence
@@ -79,7 +81,7 @@ namespace ProjectionMapper.Models
         public bool ShowOverlay { get; set; } = true;
         
         // Mesh points stored as flat arrays for JSON serialization
-        public float[] MeshPoints { get; set; } = new float[8]; // 4 points * 2 coords (X,Y)
-        public float[] OutputMeshPoints { get; set; } = new float[8]; // 4 points * 2 coords (X,Y)
+        public float[] MeshPoints { get; set; } = new float[] { 0, 0, 1, 0, 0, 1, 1, 1 }; // 4 points * 2 coords (X,Y)
+        public float[] OutputMeshPoints { get; set; } = new float[] { .3f, .3f, .7f, .3f, .3f, .7f, .7f, .7f }; // 4 points * 2 coords (X,Y)
     }
 }

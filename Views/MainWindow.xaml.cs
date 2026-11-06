@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -44,6 +45,11 @@ namespace ProjectionMapper
 
         // Track current project file path
         private string? _currentProjectPath;
+        private ProjectRecoveryService? _recovery;
+        private bool _closeApproved;
+        private bool _closingInProgress;
+        private bool _loadingProject;
+        private string? _savedFingerprint;
 
         // Track fullscreen windows for preview restore
         private readonly Dictionary<int, bool> _previewMonitorStates = new();
@@ -145,6 +151,8 @@ namespace ProjectionMapper
                     }
                 };
 
+                _savedFingerprint = ProjectFingerprint(BuildProjectModel());
+
                 // Basic Loaded handler - initialize renderer before loading any project
                 Loaded += async (_, __) =>
                 {
@@ -158,6 +166,7 @@ namespace ProjectionMapper
 
                         // Enumerate monitors and populate the dropdown
                         EnumerateMonitors();
+                        await InitializeRecoveryAsync();
                     }
                     catch (Exception ex)
                     {
@@ -170,9 +179,16 @@ namespace ProjectionMapper
                 {
                     try
                     {
+                        if (_closeApproved) return;
+                        // WPF does not await async Closing handlers. Cancel synchronously until
+                        // saving/recovery shutdown finishes, then explicitly complete shutdown.
+                        e.Cancel = true;
+                        if (_closingInProgress) return;
+                        _closingInProgress = true;
                         Debug.WriteLine("MainWindow: Window closing, checking for unsaved changes");
                         
-                        // Check for unsaved changes
+                        // Check actual persisted state, including edits without undo records.
+                        RefreshDirtyState();
                         if (_vm.HasUnsavedChanges)
                         {
                             var result = MessageBox.Show(
@@ -199,6 +215,7 @@ namespace ProjectionMapper
                             }
                         }
 
+                        if (_recovery != null) await _recovery.DisposeAsync();
                         Debug.WriteLine("MainWindow: Disposing services");
                         
                         // Stop all video playback first - use Task.Run to avoid deadlock on UI thread
@@ -224,15 +241,15 @@ namespace ProjectionMapper
 
                         Debug.WriteLine("MainWindow: Cleanup completed, shutting down application");
                         
-                        // Force application shutdown
+                        _closeApproved = true;
                         Application.Current.Shutdown();
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"MainWindow: Closing handler failed: {ex}");
-                        // Force shutdown even if cleanup fails
-                        Application.Current.Shutdown();
+                        MessageBox.Show($"Could not close safely: {ex.Message}", "Close Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
+                    finally { _closingInProgress = false; }
                 };
 
                 System.Diagnostics.Debug.WriteLine("MainWindow constructor completed successfully");
@@ -485,14 +502,14 @@ namespace ProjectionMapper
 
                 if (success)
                 {
-                    _vm.MarkProjectClean();
+                    MarkSavedSnapshot(project);
                     Debug.WriteLine("MainWindow: Project saved successfully");
                     _vm.StatusText = $"Saved: {Path.GetFileName(_currentProjectPath)}";
                 }
                 else
                 {
                     Debug.WriteLine("MainWindow: Project save failed");
-                    MessageBox.Show("Failed to save project. Check debug output for details.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Failed to save project: {_projectService.LastError}\nThe previous saved file has been preserved.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
@@ -530,7 +547,7 @@ namespace ProjectionMapper
                 if (success)
                 {
                     _currentProjectPath = path;
-                    _vm.MarkProjectClean();
+                    MarkSavedSnapshot(project);
                     Debug.WriteLine("MainWindow: Project saved successfully");
                     _vm.StatusText = $"Saved: {Path.GetFileName(path)}";
                     Title = $"ProjectionMapper - {Path.GetFileName(path)}";
@@ -538,7 +555,7 @@ namespace ProjectionMapper
                 else
                 {
                     Debug.WriteLine("MainWindow: Project save failed");
-                    MessageBox.Show("Failed to save project. Check debug output for details.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Failed to save project: {_projectService.LastError}\nThe previous saved file has been preserved.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
@@ -554,7 +571,8 @@ namespace ProjectionMapper
             {
                 Debug.WriteLine("MainWindow: Load project requested");
 
-                // Check for unsaved changes
+                // Check actual persisted state, including edits without undo records.
+                RefreshDirtyState();
                 if (_vm.HasUnsavedChanges)
                 {
                     var result = MessageBox.Show(
@@ -592,15 +610,27 @@ namespace ProjectionMapper
 
                 Debug.WriteLine($"MainWindow: Loading project from {path}");
 
-                // Load project
+                // Validate and resolve all files before discarding the current editor state.
                 var project = await _projectService.LoadAsync(path);
+                bool recovered = false;
+                if (project == null && File.Exists(path + ".bak") &&
+                    MessageBox.Show($"The project could not be opened: {_projectService.LastError}\nOpen the previous saved backup instead?",
+                        "Recover Project", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    project = await _projectService.LoadAsync(path + ".bak");
+                    recovered = project != null;
+                }
 
                 if (project == null)
                 {
                     Debug.WriteLine("MainWindow: Project load failed");
-                    MessageBox.Show("Failed to load project. The file may be corrupted or incompatible.", "Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Failed to load project: {_projectService.LastError}", "Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
+
+                // Missing media must be resolved before the current project is cleared.
+                bool relinked = project.ImportedVideos.Any(v => !File.Exists(v.SourcePath));
+                if (!await RelinkMissingMediaAsync(project)) return;
 
                 // Clear current project state
                 await ClearProjectState();
@@ -609,7 +639,8 @@ namespace ProjectionMapper
                 await LoadProjectState(project);
 
                 _currentProjectPath = path;
-                _vm.MarkProjectClean();
+                _savedFingerprint = recovered || relinked ? string.Empty : ProjectFingerprint(BuildProjectModel());
+                RefreshDirtyState();
                 Debug.WriteLine("MainWindow: Project loaded successfully");
                 _vm.StatusText = $"Loaded: {Path.GetFileName(path)}";
                 Title = $"ProjectionMapper - {Path.GetFileName(path)}";
@@ -627,7 +658,8 @@ namespace ProjectionMapper
             {
                 Debug.WriteLine("MainWindow: New project requested");
 
-                // Check for unsaved changes
+                // Check actual persisted state, including edits without undo records.
+                RefreshDirtyState();
                 if (_vm.HasUnsavedChanges)
                 {
                     var result = MessageBox.Show(
@@ -657,6 +689,8 @@ namespace ProjectionMapper
                 await ClearProjectState();
 
                 _currentProjectPath = null;
+                _vm.ActiveProject = new ProjectModel { Name = "Untitled Project" };
+                _savedFingerprint = ProjectFingerprint(BuildProjectModel());
                 _vm.MarkProjectClean();
                 Debug.WriteLine("MainWindow: New project created");
                 _vm.StatusText = "New project created";
@@ -1517,6 +1551,95 @@ namespace ProjectionMapper
             }
         }
 
+        private async Task<bool> RelinkMissingMediaAsync(ProjectModel project)
+        {
+            foreach (var video in project.ImportedVideos)
+            {
+                if (File.Exists(video.SourcePath)) continue;
+                var replacement = await _fileDialog.ShowOpenFileDialogAsync(
+                    $"Locate missing media: {Path.GetFileName(video.SourcePath)}", "Media files|*.*");
+                if (string.IsNullOrEmpty(replacement)) return false;
+                video.SourcePath = replacement;
+            }
+            return true;
+        }
+
+        private async Task InitializeRecoveryAsync()
+        {
+            try
+            {
+                int seconds = 60;
+                var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                if (File.Exists(settingsPath))
+                {
+                    using var settings = JsonDocument.Parse(await File.ReadAllTextAsync(settingsPath),
+                        new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+                    if (settings.RootElement.TryGetProperty("ProjectRecovery", out var options) &&
+                        options.TryGetProperty("IntervalSeconds", out var interval)) seconds = interval.GetInt32();
+                }
+                if (seconds <= 0) return; // Explicitly configurable opt-out.
+                _recovery = new ProjectRecoveryService(Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ProjectionMapper", "Recovery"));
+                var candidate = _recovery.FindLatestRecoverable();
+                if (candidate != null && MessageBox.Show(
+                    "A recovery snapshot from an interrupted session is available. Open it? Your saved project will not be overwritten.",
+                    "Recover Unsaved Work", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    var project = await _projectService.LoadAsync(candidate);
+                    if (project != null && await RelinkMissingMediaAsync(project))
+                    {
+                        await ClearProjectState();
+                        await LoadProjectState(project);
+                        _currentProjectPath = null; // Recovery must be saved deliberately with Save As.
+                        _savedFingerprint = string.Empty;
+                        _vm.MarkProjectDirty();
+                        _recovery.MarkRestored(candidate);
+                        Title = "ProjectionMapper - Recovered project (save required)";
+                    }
+                    else if (project == null)
+                        MessageBox.Show($"Recovery could not be opened: {_projectService.LastError}", "Recovery Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                _recovery.Start(TimeSpan.FromSeconds(seconds), async () =>
+                    await Dispatcher.InvokeAsync(() =>
+                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0)
+                            ? BuildProjectModel() : null),
+                    error => Dispatcher.BeginInvoke(() => _vm.StatusText = $"Recovery snapshot failed: {error}"));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Recovery initialization failed: {ex}");
+                _vm.StatusText = $"Automatic recovery unavailable: {ex.Message}";
+            }
+        }
+
+        private static string ProjectFingerprint(ProjectModel project)
+        {
+            var json = JsonSerializer.SerializeToNode(project, new JsonSerializerOptions { IncludeFields = true })!.AsObject();
+            json.Remove(nameof(ProjectModel.LastModified));
+            return json.ToJsonString();
+        }
+
+        private void RefreshDirtyState()
+        {
+            try
+            {
+                if (_savedFingerprint != null)
+                    _vm.HasUnsavedChanges = ProjectFingerprint(BuildProjectModel()) != _savedFingerprint;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not compare project state: {ex}");
+                _vm.MarkProjectDirty();
+            }
+        }
+
+        private void MarkSavedSnapshot(ProjectModel saved)
+        {
+            _savedFingerprint = ProjectFingerprint(saved);
+            if (_vm.ActiveProject != null) _vm.ActiveProject.LastModified = saved.LastModified;
+            RefreshDirtyState(); // Edits made while disk I/O ran still need saving.
+        }
+
         private ProjectModel BuildProjectModel()
         {
             try
@@ -1524,13 +1647,19 @@ namespace ProjectionMapper
                 var project = new ProjectModel
                 {
                     Name = _vm.ActiveProject?.Name ?? "Untitled Project",
+                    CreatedAt = _vm.ActiveProject?.CreatedAt ?? DateTime.UtcNow,
+                    LastModified = _vm.ActiveProject?.LastModified ?? DateTime.UtcNow,
                     ProjectVersion = 2,
                     PlaylistMode = _vm.IsPlaylistMode,
-                    ShowMeshOverlay = true,
-                    ShowCoordinateGrid = false,
+                    ShowMeshOverlay = PART_GlobalShowMeshOverlayCheckbox.IsChecked == true,
+                    ShowCoordinateGrid = _vm.ActiveProject?.ShowCoordinateGrid ?? false,
                     InputZoom = _vm.InputZoom,
                     OutputZoom = _vm.OutputZoom
                 };
+
+                // Preserve legacy surface metadata as well as the video/mesh editor state.
+                if (_vm.ActiveProject != null)
+                    foreach (var surface in _vm.ActiveProject.Surfaces) project.Surfaces.Add(surface);
 
                 // Add imported videos
                 foreach (var imported in _vm.ImportedVideos)
@@ -1541,7 +1670,8 @@ namespace ProjectionMapper
                         Name = imported.Name,
                         SourcePath = imported.SourcePath,
                         PlayAudio = imported.PlayAudio,
-                        Visible = true
+                        TargetMonitorIndex = imported.HostLayer?.TargetMonitorIndex ?? -1,
+                        Visible = imported.HostLayer?.Visible ?? true
                     };
 
                     // Add mesh layers
@@ -1590,7 +1720,11 @@ namespace ProjectionMapper
                 // Add playlist groups
                 project.PlaylistGroups = _vm.BuildPlaylistGroupModels();
 
-                return project;
+                // Detach legacy surfaces too; autosave and async Save must never retain
+                // mutable editor objects after returning to the dispatcher.
+                var options = new JsonSerializerOptions { IncludeFields = true };
+                return JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, options), options)
+                    ?? throw new InvalidDataException("Could not capture project state.");
             }
             catch (Exception ex)
             {
@@ -1603,6 +1737,7 @@ namespace ProjectionMapper
         {
             try
             {
+                _loadingProject = true;
                 Debug.WriteLine("MainWindow: Clearing project state");
 
                 // Stop playback - pass re-enable looping flag to restore legacy mode behavior
@@ -1632,15 +1767,21 @@ namespace ProjectionMapper
                 Debug.WriteLine($"MainWindow: ClearProjectState failed: {ex}");
                 throw;
             }
+            finally { _loadingProject = false; }
         }
 
         private async Task LoadProjectState(ProjectModel project)
         {
             try
             {
+                _loadingProject = true;
                 Debug.WriteLine($"MainWindow: Loading project state for '{project.Name}'");
 
-                // Set project properties
+                // Restore identity and metadata before populating the editor.
+                _vm.ActiveProject = project;
+                // Set the checkbox before loading meshes so its bulk-toggle handler cannot
+                // overwrite per-mesh visibility saved in the project.
+                PART_GlobalShowMeshOverlayCheckbox.IsChecked = project.ShowMeshOverlay;
                 _vm.IsPlaylistMode = project.PlaylistMode;
                 _vm.InputZoom = project.InputZoom;
                 _vm.OutputZoom = project.OutputZoom;
@@ -1660,6 +1801,7 @@ namespace ProjectionMapper
                         Height = _rendererManager.OutputHeight,
                         Visible = videoData.Visible,
                         PlayAudio = videoData.PlayAudio,
+                        TargetMonitorIndex = videoData.TargetMonitorIndex,
                         PreviewOnly = videoData.MeshLayers.Count > 0
                     };
 
@@ -1731,6 +1873,7 @@ namespace ProjectionMapper
                  Debug.WriteLine($"MainWindow: LoadProjectState failed: {ex}");
                  throw;
              }
+             finally { _loadingProject = false; }
         }
 
         /// <summary>

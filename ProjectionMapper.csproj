@@ -25,6 +25,7 @@
     <Content Include="ProjectionMapper.ico" />
     <!-- Regression programs are separate projects, not application sources. -->
     <Compile Remove="tests/**/*.cs" />
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
