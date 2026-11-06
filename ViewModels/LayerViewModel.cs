@@ -118,6 +118,7 @@ namespace ProjectionMapper.ViewModels
 
         public void SetMeshPoint(int index, Vector2 pt)
         {
+            if (!float.IsFinite(pt.X) || !float.IsFinite(pt.Y)) throw new ArgumentOutOfRangeException(nameof(pt));
             if (index < 0 || index >= _model.MeshPoints.Length) throw new ArgumentOutOfRangeException(nameof(index));
 
             // Clamp to normalized range [0,1] to prevent runaway coordinates from UI drags
@@ -133,6 +134,7 @@ namespace ProjectionMapper.ViewModels
 
         public void SetOutputMeshPoint(int index, Vector2 pt)
         {
+            if (!float.IsFinite(pt.X) || !float.IsFinite(pt.Y)) throw new ArgumentOutOfRangeException(nameof(pt));
             if (index < 0 || index >= _model.OutputMeshPoints.Length) throw new ArgumentOutOfRangeException(nameof(index));
 
             var clampedX = Math.Max(0f, Math.Min(1f, pt.X));
@@ -157,6 +159,20 @@ namespace ProjectionMapper.ViewModels
                 RaisePropertyChanged();
             }
         }
+
+        public bool IsLocked
+        {
+            get => _model.IsLocked;
+            set
+            {
+                if (_model.IsLocked == value) return;
+                _model.IsLocked = value;
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(CanEditMapping));
+            }
+        }
+
+        public bool CanEditMapping => !IsLocked;
 
         public int TargetMonitorIndex
         {

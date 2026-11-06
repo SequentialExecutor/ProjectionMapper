@@ -65,6 +65,8 @@
         <!-- Tool bar -->
         <ToolBarTray DockPanel.Dock="Top" IsLocked="False">
             <ToolBar>
+                <Button Content="Calibrate output…" Click="OpenCalibration_Click" ToolTip="Identify projectors, position mesh corners in pixels, and lock mapping" />
+                <Separator />
                 <Button Content="New" Command="{Binding NewProjectCommand}" ToolTip="New Project (Ctrl+N)" />
                 <Button Content="Open" Command="{Binding LoadProjectCommand}" ToolTip="Open Project (Ctrl+O)" />
                 <Button Content="Save" Command="{Binding SaveProjectCommand}" ToolTip="Save Project (Ctrl+S)" />
@@ -264,6 +266,7 @@
                     
                     <!-- Simple inspector for selected mesh layer -->
                     <StackPanel DataContext="{Binding SelectedMeshLayer}" Margin="0,8,0,0">
+                        <CheckBox Content="Lock input/output mapping" IsChecked="{Binding IsLocked, Mode=TwoWay}" Margin="0,4" />
                         <TextBlock Text="Selected:" FontWeight="Bold" />
                         <TextBlock Text="{Binding Name}" />
                         <TextBlock Text="Source:" FontWeight="Bold" Margin="0,8,0,0" />
@@ -280,7 +283,7 @@
 
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                 <TextBlock Text="Output Display:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <ComboBox x:Name="PART_MeshMonitorCombo" Width="150" SelectedIndex="-1" />
+                                <ComboBox x:Name="PART_MeshMonitorCombo" IsEnabled="{Binding CanEditMapping}" Width="150" SelectedIndex="-1" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="Show Mesh Overlay on Output:" VerticalAlignment="Center" Margin="0,0,6,0" />

@@ -74,6 +74,15 @@ internal static class Program
             software.SubmitLayerFrame("a", null, bounds, null, 0);
             var layers = typeof(SoftwareRenderer).GetField("_layers", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(software)!;
             Check((int)layers.GetType().GetProperty("Count")!.GetValue(layers)! == 0, "software renderer removes cleared entries");
+            // Rectangular content must scale into the preview even without a warp quad.
+            manager.ResizeAsync(128, 72).GetAwaiter().GetResult();
+            var sizes = (ConcurrentDictionary<int, (int Width, int Height)>)typeof(RendererManager)
+                .GetField("_monitorRendererSizes", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
+            sizes[0] = (1920, 1080);
+            manager.SubmitLayerFrameForMonitor("rectangle", image, new Rect(960, 540, 192, 108), null, 1, 0);
+            Check(Math.Abs(preview.LastRectangle.X - 64) < .001 && Math.Abs(preview.LastRectangle.Width - 12.8) < .001,
+                "rectangle scales to preview dimensions without requiring a quad");
+            RenderingChecks.Run();
             Console.WriteLine("Output routing regression checks passed.");
             return 0;
         }
@@ -93,9 +102,11 @@ internal static class Program
     {
         private readonly ConcurrentDictionary<string, BitmapSource> frames = new();
         public event Action<BitmapSource?>? FrameReady;
+        public Rect LastRectangle { get; private set; }
         public bool Has(string id) => frames.ContainsKey(id);
         public void SubmitLayerFrame(string id, BitmapSource? frame, Rect rect, Point[]? quad, double opacity)
         {
+            LastRectangle = rect;
             if (frame == null) frames.TryRemove(id, out _);
             else frames[id] = frame;
         }

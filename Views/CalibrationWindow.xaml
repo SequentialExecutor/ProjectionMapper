@@ -1,0 +1,57 @@
+<Window x:Class="ProjectionMapper.Views.CalibrationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Output calibration" Width="560" Height="650" MinWidth="480" MinHeight="600"
+        Topmost="True" WindowStartupLocation="CenterOwner" KeyDown="Window_KeyDown">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <TextBlock Text="1. Identify the projector" FontSize="18" FontWeight="SemiBold" />
+            <ComboBox x:Name="Output" DisplayMemberPath="Name" SelectionChanged="Output_SelectionChanged" Margin="0,10" />
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="Pattern" Content="Show numbered grid" Click="Pattern_Click" VerticalAlignment="Center" />
+                <TextBlock Text="Grid spacing (px)" Margin="16,0,6,0" VerticalAlignment="Center" />
+                <TextBox x:Name="GridSpacing" Text="64" Width="60" />
+                <Button Content="Refresh" Click="Pattern_Click" Margin="6,0" />
+            </StackPanel>
+            <TextBlock Text="The grid temporarily replaces video on the selected display. Closing this panel restores video." TextWrapping="Wrap" Margin="0,8" />
+            <Separator Margin="0,10" />
+            <TextBlock Text="2. Align the selected output mesh" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock x:Name="MeshName" Margin="0,8" TextWrapping="Wrap" />
+            <Button Content="Assign mesh to selected display" Click="Assign_Click" HorizontalAlignment="Left" />
+            <CheckBox x:Name="Locked" Content="Lock input/output mapping" Click="Locked_Click" Margin="0,10" />
+            <TextBlock Text="These are destination pixels. Source cropping stays in the main input editor." TextWrapping="Wrap" Margin="0,0,0,10" />
+            <ComboBox x:Name="Corner" SelectedIndex="0" SelectionChanged="Corner_SelectionChanged" Margin="0,4">
+                <ComboBoxItem Content="Top left" /><ComboBoxItem Content="Top right" />
+                <ComboBoxItem Content="Bottom left" /><ComboBoxItem Content="Bottom right" />
+            </ComboBox>
+            <StackPanel x:Name="Coordinates" Orientation="Horizontal" Margin="0,8">
+                <TextBlock Text="X (px)" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBox x:Name="XValue" Width="90" />
+                <TextBlock Text="Y (px)" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <TextBox x:Name="YValue" Width="90" />
+                <Button Content="Apply" Click="Apply_Click" Margin="12,0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,4">
+                <CheckBox x:Name="Snap" Content="Snap numeric edits to grid" VerticalAlignment="Center" />
+                <TextBox x:Name="SnapStep" Text="10" Width="55" Margin="10,0,4,0" />
+                <TextBlock Text="px" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel x:Name="Nudges" Orientation="Horizontal" Margin="0,10">
+                <Button Content="←" Tag="-1,0" Click="Nudge_Click" Width="36" />
+                <Button Content="↑" Tag="0,-1" Click="Nudge_Click" Width="36" />
+                <Button Content="↓" Tag="0,1" Click="Nudge_Click" Width="36" />
+                <Button Content="→" Tag="1,0" Click="Nudge_Click" Width="36" />
+                <TextBlock Text="Step (px)" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <TextBox x:Name="NudgeStep" Text="1" Width="55" />
+            </StackPanel>
+            <TextBlock Text="Arrow keys move the selected corner when not editing a text field or list. Shift multiplies the nudge step by 10. Nudges remain exact even when snapping is enabled." TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Margin="0,10">
+                <Button Content="Undo" Click="Undo_Click" Width="70" />
+                <Button Content="Redo" Click="Redo_Click" Width="70" Margin="6,0" />
+                <Button Content="Refresh timing" Click="Timing_Click" Margin="12,0" />
+            </StackPanel>
+            <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="DarkBlue" Margin="0,6" />
+            <Button Content="Done" Click="Done_Click" HorizontalAlignment="Right" Padding="20,6" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>

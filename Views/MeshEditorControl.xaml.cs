@@ -608,6 +608,7 @@ namespace ProjectionMapper.Views
 
         private void Canvas_MouseMove(object? sender, MouseEventArgs e)
         {
+            if (SelectedLayer?.IsLocked == true) return;
             if (_isDisposed) return;
 
             if (_isMiddleDown && e.MiddleButton == MouseButtonState.Pressed)
@@ -1011,6 +1012,7 @@ namespace ProjectionMapper.Views
         /// <param name="dy">Vertical change in pixels</param>
         private void MoveCorner(int index, double dx, double dy)
         {
+            if (SelectedLayer?.IsLocked == true) return;
             if (_isDisposed) return;
 
             _suppressVmRebind = true;
@@ -1061,6 +1063,7 @@ namespace ProjectionMapper.Views
 
         private void OutputDrag_DragDelta(object sender, DragDeltaEventArgs e)
         {
+            if (SelectedLayer?.IsLocked == true) return;
             if (_isDisposed) return;
 
             var dx = e.HorizontalChange;
@@ -1096,6 +1099,7 @@ namespace ProjectionMapper.Views
 
         private void WriteBackMeshPoints()
         {
+            if (SelectedLayer?.IsLocked == true) return;
             if (_isDisposed) return;
 
             var vm = SelectedLayer;
@@ -1208,6 +1212,7 @@ namespace ProjectionMapper.Views
 
         private void WriteBackOutputRect()
         {
+            if (SelectedLayer?.IsLocked == true) return;
             if (_isDisposed) return;
 
             var vm = SelectedLayer;

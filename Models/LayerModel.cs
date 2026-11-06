@@ -95,6 +95,9 @@ namespace ProjectionMapper.Models
         /// </summary>
         public bool ShowOverlay { get; set; } = true;
 
+        /// <summary>Prevents accidental input/output geometry edits in the calibration editors.</summary>
+        public bool IsLocked { get; set; }
+
         /// <summary>
         /// When true, the layer's audio should be played alongside decoded video frames (if supported).
         /// This is a user preference stored on the model so services can resume/pause playback appropriately.

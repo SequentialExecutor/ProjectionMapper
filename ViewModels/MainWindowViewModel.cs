@@ -1039,6 +1039,7 @@ namespace ProjectionMapper.ViewModels
                     X = selectedMesh.X,
                     Y = selectedMesh.Y,
                     TargetMonitorIndex = selectedMesh.TargetMonitorIndex,
+                    IsLocked = selectedMesh.IsLocked,
                     Opacity = selectedMesh.Opacity
                 };
 
@@ -1104,6 +1105,7 @@ namespace ProjectionMapper.ViewModels
                     SourceId = host?.Id,
                     Visible = true,
                     TargetMonitorIndex = copiedMesh.TargetMonitorIndex,
+                    IsLocked = copiedMesh.IsLocked,
                     Opacity = copiedMesh.Opacity
                 };
 

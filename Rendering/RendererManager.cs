@@ -21,6 +21,8 @@ namespace ProjectionMapper.Rendering
     public sealed class RendererManager : IDisposable
     {
         private readonly IRenderer _renderer;
+        private readonly ConcurrentDictionary<int, BitmapSource> _calibrationPatterns = new();
+        private readonly ConcurrentDictionary<int, BitmapSource> _latestMonitorFrames = new();
         private readonly object _layerSubmissionLock = new();
         private RenderLoop? _renderLoop;
         private bool _started;
@@ -248,20 +250,36 @@ namespace ProjectionMapper.Rendering
             // Fullscreen windows now have their own renderers, so no mirroring needed
         }
 
+        public void SetCalibrationPattern(int monitorIndex, BitmapSource? pattern)
+        {
+            if (pattern == null) _calibrationPatterns.TryRemove(monitorIndex, out _);
+            else _calibrationPatterns[monitorIndex] = pattern;
+            _latestMonitorFrames.TryGetValue(monitorIndex, out var latest);
+            OnMonitorFrameReady(monitorIndex, latest);
+        }
+
+        public int[] CalibrationMonitorIndices => _calibrationPatterns.Keys.ToArray();
+
+        public double GetMonitorRenderMilliseconds(int monitorIndex) =>
+            _monitorRenderers.TryGetValue(monitorIndex, out var renderer) && renderer is SoftwareRenderer software
+                ? software.LastRenderMilliseconds : 0;
+
         private void OnMonitorFrameReady(int monitorIndex, BitmapSource? bmp)
         {
             try
             {
+                if (bmp != null) _latestMonitorFrames[monitorIndex] = bmp;
+                else _latestMonitorFrames.TryRemove(monitorIndex, out _);
+                // Choose the current override inside the queued UI action so queued video
+                // frames cannot replace a newly enabled pattern (or restore a stale pattern).
                 if (_fullscreenWindows.TryGetValue(monitorIndex, out var win) && win != null)
                 {
-                    if (bmp == null)
+                    InvokeOnUi(() =>
                     {
-                        InvokeOnUi(() => { try { win.HostControl?.Clear(); } catch { } });
-                    }
-                    else
-                    {
-                        InvokeOnUi(() => { try { win.HostControl?.SetFrame(bmp); } catch { } });
-                    }
+                        var visible = _calibrationPatterns.TryGetValue(monitorIndex, out var pattern) ? pattern : bmp;
+                        if (visible == null) win.HostControl?.Clear();
+                        else win.HostControl?.SetFrame(visible);
+                    });
                 }
             }
             catch (Exception ex)
@@ -542,12 +560,12 @@ namespace ProjectionMapper.Rendering
                     // destQuad is in target monitor coordinates, need to scale to main renderer coordinates
                     Point[]? mainQuad = destQuad;
                     Rect mainRect = destRect;
-                    if (destQuad != null && monitorW > 0 && monitorH > 0 && OutputWidth > 0 && OutputHeight > 0)
+                    if (monitorW > 0 && monitorH > 0 && OutputWidth > 0 && OutputHeight > 0)
                     {
                         // Scale from monitor coordinates to main renderer coordinates
                         double scaleX = (double)OutputWidth / monitorW;
                         double scaleY = (double)OutputHeight / monitorH;
-                        mainQuad = new Point[4]
+                        if (destQuad?.Length == 4) mainQuad = new Point[4]
                         {
                             new Point(destQuad[0].X * scaleX, destQuad[0].Y * scaleY),
                             new Point(destQuad[1].X * scaleX, destQuad[1].Y * scaleY),
@@ -879,6 +897,8 @@ catch (Exception ex)
                 }
 
                 _fullscreenWindows.Remove(monitorIndex);
+                _calibrationPatterns.TryRemove(monitorIndex, out _);
+                _latestMonitorFrames.TryRemove(monitorIndex, out _);
 
                 // Dispose associated monitor renderer and stop loop
                 if (_monitorRenderLoops.TryGetValue(monitorIndex, out var loop))

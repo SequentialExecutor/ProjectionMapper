@@ -5,6 +5,8 @@
 // Error handling and logging added.
 
 using System;
+using ProjectionMapper.Utilities;
+using System.Numerics;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
@@ -23,6 +25,8 @@ namespace ProjectionMapper.Rendering
         private double _dpiX = 96;
         private double _dpiY = 96;
         private bool _initialized;
+        private double _lastRenderMilliseconds;
+        public double LastRenderMilliseconds => Volatile.Read(ref _lastRenderMilliseconds);
 
         // LayerId -> (frame, destRect, destQuad, opacity)
         private readonly ConcurrentDictionary<string, (BitmapSource? Frame, Rect DestRect, Point[]? DestQuad, double Opacity)> _layers
@@ -168,12 +172,13 @@ namespace ProjectionMapper.Rendering
                 }
             }
 
-            _layers[layerId] = (safeFrame, destRect, destQuad, opacity);
+            _layers[layerId] = (safeFrame, destRect, destQuad == null ? null : (Point[])destQuad.Clone(), Math.Clamp(opacity, 0, 1));
         }
 
         public Task RenderFrameAsync(CancellationToken token = default)
         {
             if (!_initialized) return Task.CompletedTask;
+            var frameTime = Stopwatch.StartNew();
 
             try
             {
@@ -202,19 +207,22 @@ namespace ProjectionMapper.Rendering
                         BitmapSource compositeBitmap = frame;
                         Rect compositeDest = entry.DestRect;
 
-                        if (entry.DestQuad != null && entry.DestQuad.Length >= 4)
+                        if (entry.DestQuad != null)
                         {
                             var quad = entry.DestQuad;
+                            if (quad.Length != 4 || !QuadGeometry.IsValid(quad.Select(p => new Vector2((float)p.X, (float)p.Y)).ToArray()))
+                                continue; // Invalid mappings must not project an unwarped rectangular fallback.
                             var w = _width;
                             var h = _height;
 
                             // Skip warping when the quad exactly covers the full-frame corners.
                             bool isFullFrame =
-                                Math.Abs(quad[0].X) < 1 && Math.Abs(quad[0].Y) < 1 &&
-                                Math.Abs(quad[1].X - w) < 1 && Math.Abs(quad[1].Y) < 1 &&
-                                Math.Abs(quad[2].X) < 1 && Math.Abs(quad[2].Y - h) < 1 &&
-                                Math.Abs(quad[3].X - w) < 1 && Math.Abs(quad[3].Y - h) < 1;
+                                Math.Abs(quad[0].X) < 1e-6 && Math.Abs(quad[0].Y) < 1e-6 &&
+                                Math.Abs(quad[1].X - w) < 1e-6 && Math.Abs(quad[1].Y) < 1e-6 &&
+                                Math.Abs(quad[2].X) < 1e-6 && Math.Abs(quad[2].Y - h) < 1e-6 &&
+                                Math.Abs(quad[3].X - w) < 1e-6 && Math.Abs(quad[3].Y - h) < 1e-6;
 
+                            if (isFullFrame) compositeDest = new Rect(0, 0, w, h);
                             if (!isFullFrame)
                             {
                                 try
@@ -224,6 +232,7 @@ namespace ProjectionMapper.Rendering
                                     int maxX = (int)Math.Ceiling(Math.Min(_width, Math.Max(Math.Max(quad[0].X, quad[1].X), Math.Max(quad[2].X, quad[3].X))));
                                     int maxY = (int)Math.Ceiling(Math.Min(_height, Math.Max(Math.Max(quad[0].Y, quad[1].Y), Math.Max(quad[2].Y, quad[3].Y))));
 
+                                    if (maxX <= minX || maxY <= minY) continue;
                                     int bboxW = Math.Max(1, maxX - minX);
                                     int bboxH = Math.Max(1, maxY - minY);
 
@@ -233,11 +242,12 @@ namespace ProjectionMapper.Rendering
                                         compositeBitmap = warped;
                                         compositeDest = new Rect(minX, minY, bboxW, bboxH);
                                     }
+                                    else continue;
                                 }
                                 catch (Exception ex)
                                 {
                                     Debug.WriteLine($"SoftwareRenderer: warp pre-compute failed for layer {kv.Key}: {ex}");
-                                    // fall through — compositeItem retains the unwarped frame + DestRect
+                                    continue; // Do not leak unwarped content when the warp cannot be rendered.
                                 }
                             }
                         }
@@ -317,6 +327,7 @@ namespace ProjectionMapper.Rendering
                 Debug.WriteLine($"SoftwareRenderer.RenderFrameAsync failed: {ex}");
             }
 
+            Volatile.Write(ref _lastRenderMilliseconds, frameTime.Elapsed.TotalMilliseconds);
             return Task.CompletedTask;
         }
 
@@ -395,11 +406,11 @@ BitmapSource src32 = src;
                             double v = sy_num / sw;
 
                             // u,v should be in [0,1] to sample source
-                            if (u < -0.01 || u > 1.01 || v < -0.01 || v > 1.01) continue;
+                            if (u < 0 || u > 1 || v < 0 || v > 1) continue;
 
                             // map to source pixel coords
-                            double fx = u * (srcW - 1);
-                            double fy = v * (srcH - 1);
+                            double fx = Math.Clamp(u * srcW - 0.5, 0, srcW - 1);
+                            double fy = Math.Clamp(v * srcH - 0.5, 0, srcH - 1);
 
                             // bilinear sample
                             int x0 = (int)Math.Floor(fx);
@@ -440,6 +451,13 @@ BitmapSource src32 = src;
                             double r11 = srcPixels[idx11 + 2];
                             double a11 = srcPixels[idx11 + 3];
 
+                            // Interpolate premultiplied colors so invisible pixels cannot
+                            // contribute colored fringes at transparent edges.
+                            b00 *= a00 / 255; g00 *= a00 / 255; r00 *= a00 / 255;
+                            b10 *= a10 / 255; g10 *= a10 / 255; r10 *= a10 / 255;
+                            b01 *= a01 / 255; g01 *= a01 / 255; r01 *= a01 / 255;
+                            b11 *= a11 / 255; g11 *= a11 / 255; r11 *= a11 / 255;
+
                             // bilinear interp
                             double b0 = b00 * (1 - tx) + b10 * tx;
                             double g0 = g00 * (1 - tx) + g10 * tx;
@@ -456,6 +474,7 @@ BitmapSource src32 = src;
                             double rf = r0 * (1 - ty) + r1 * ty;
                             double af = a0 * (1 - ty) + a1 * ty;
 
+                            if (af > 0) { bf *= 255 / af; gf *= 255 / af; rf *= 255 / af; }
                             int outIdx = rowStart + x * 4;
                             outPixels[outIdx + 0] = (byte)Math.Max(0, Math.Min(255, (int)Math.Round(bf)));
                             outPixels[outIdx + 1] = (byte)Math.Max(0, Math.Min(255, (int)Math.Round(gf)));

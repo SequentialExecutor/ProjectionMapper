@@ -79,6 +79,7 @@ namespace ProjectionMapper.Models
         public bool Visible { get; set; } = true;
         public int TargetMonitorIndex { get; set; } = -1;
         public bool ShowOverlay { get; set; } = true;
+        public bool IsLocked { get; set; }
         
         // Mesh points stored as flat arrays for JSON serialization
         public float[] MeshPoints { get; set; } = new float[] { 0, 0, 1, 0, 0, 1, 1, 1 }; // 4 points * 2 coords (X,Y)

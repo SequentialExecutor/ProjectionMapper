@@ -886,7 +886,7 @@ namespace ProjectionMapper
         /// Ensures fullscreen output windows exist for all monitors referenced by any mesh layer.
         /// Also removes windows that are no longer needed.
         /// </summary>
-        private void EnsureMonitorWindows()
+        private void EnsureMonitorWindows(bool force = false)
         {
             try
             {
@@ -894,7 +894,7 @@ namespace ProjectionMapper
                 lock (_ensureMonitorWindowsLock)
                 {
                     var now = DateTime.UtcNow;
-                    if ((now - _lastEnsureMonitorWindowsCall).TotalMilliseconds < 100)
+                    if (!force && (now - _lastEnsureMonitorWindowsCall).TotalMilliseconds < 100)
                     {
                         return;
                     }
@@ -925,6 +925,9 @@ namespace ProjectionMapper
                         }
                     }
                 }
+
+                // Keep temporary calibration outputs alive while their patterns are displayed.
+                foreach (var index in _rendererManager.CalibrationMonitorIndices) required.Add(index);
 
                 // Hide windows no longer referenced by any layer
                 foreach (var active in _activeMonitorWindows.Keys.ToList())
@@ -1504,6 +1507,12 @@ namespace ProjectionMapper
             {
                 if (_vm.SelectedMeshLayer == null) return;
 
+                if (_vm.SelectedMeshLayer.IsLocked)
+                {
+                    PART_MeshMonitorCombo.SelectedIndex = _vm.SelectedMeshLayer.TargetMonitorIndex + 1;
+                    return;
+                }
+
                 var selectedIndex = PART_MeshMonitorCombo.SelectedIndex - 1; // -1 because "None" is at index 0
 
                 // Use the ViewModel property to trigger PropertyChanged notification
@@ -1642,6 +1651,39 @@ namespace ProjectionMapper
             RefreshDirtyState(); // Edits made while disk I/O ran still need saving.
         }
 
+        private void OpenCalibration_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                EnumerateMonitors();
+                var outputs = _monitorItems.Select(item => new CalibrationOutput(item.Index, item.Name,
+                    _monitors[item.Index].PhysicalWidth, _monitors[item.Index].PhysicalHeight)).ToList();
+                var window = new CalibrationWindow(outputs, _vm.SelectedMeshLayer, _vm.UndoRedoService,
+                    (index, pattern) =>
+                    {
+                        if (pattern != null) ShowMonitorWindow(index);
+                        _rendererManager.SetCalibrationPattern(index, pattern);
+                    },
+                    () =>
+                    {
+                        EnsureMonitorWindows(force: true);
+                        var id = _vm.SelectedMeshLayer?.Id;
+                        if (!string.IsNullOrEmpty(id)) _videoService.RefreshMeshLayerRendering(id);
+                        _vm.MarkProjectDirty();
+                    }, index => _rendererManager.GetMonitorRenderMilliseconds(index));
+                window.Owner = this;
+                window.ShowDialog();
+                EnsureMonitorWindows(force: true);
+                if (_vm.SelectedMeshLayer != null)
+                    PART_MeshMonitorCombo.SelectedIndex = _vm.SelectedMeshLayer.TargetMonitorIndex + 1;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Calibration failed: {ex}");
+                MessageBox.Show($"Could not open calibration: {ex.Message}", "Calibration Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private ProjectModel BuildProjectModel()
         {
             try
@@ -1692,6 +1734,7 @@ namespace ProjectionMapper
                             Visible = mesh.Visible,
                             // Access TargetMonitorIndex through the Model property
                             TargetMonitorIndex = mesh.Model.TargetMonitorIndex,
+                            IsLocked = mesh.IsLocked,
                             ShowOverlay = mesh.ShowOverlay
                         };
 
@@ -1825,6 +1868,7 @@ namespace ProjectionMapper
                             Opacity = meshData.Opacity,
                             Visible = meshData.Visible,
                             TargetMonitorIndex = meshData.TargetMonitorIndex,
+                            IsLocked = meshData.IsLocked,
                             ShowOverlay = meshData.ShowOverlay
                         };
 

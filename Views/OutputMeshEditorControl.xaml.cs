@@ -217,7 +217,7 @@ namespace ProjectionMapper.Views
             }
 
             // Preview is always visible when layer is selected
-            PART_CroppedPreview.Visibility = Visibility.Visible;
+            PART_CroppedPreview.Visibility = HostRenderHost == null ? Visibility.Visible : Visibility.Collapsed;
 
             // Polygon and handles visibility depends on ShowOverlay setting
             UpdateOverlayControlsVisibility();
@@ -656,7 +656,7 @@ namespace ProjectionMapper.Views
                     try
                     {
                         PART_CroppedPreview.Source = frameForPreview;
-                        PART_CroppedPreview.Visibility = Visibility.Visible;
+                        PART_CroppedPreview.Visibility = HostRenderHost == null ? Visibility.Visible : Visibility.Collapsed;
                         ApplyLayout();
                     }
                     catch { }
@@ -729,7 +729,7 @@ namespace ProjectionMapper.Views
                             try
                             {
                                 PART_CroppedPreview.Source = frameForPreview;
-                                PART_CroppedPreview.Visibility = Visibility.Visible;
+                                PART_CroppedPreview.Visibility = HostRenderHost == null ? Visibility.Visible : Visibility.Collapsed;
                                 ApplyLayout();
                             }
                             catch { }
@@ -834,6 +834,7 @@ namespace ProjectionMapper.Views
 
         private void MoveCorner(int index, double dx, double dy)
         {
+            if (_vm?.IsLocked == true) return;
             if (_isDisposed) return;
 
             _suppressVmRebind = true;
@@ -884,6 +885,7 @@ namespace ProjectionMapper.Views
 
         private void WriteBackMeshPoints()
         {
+            if (_vm?.IsLocked == true) return;
             if (_isDisposed || _vm == null) return;
 
             var cw = PART_Canvas.ActualWidth;

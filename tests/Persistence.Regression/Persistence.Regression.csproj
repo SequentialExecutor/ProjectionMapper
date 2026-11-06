@@ -11,6 +11,7 @@
     <Compile Include="../../Services/ProjectRecoveryService.cs" Link="ProjectRecoveryService.cs" />
     <Compile Include="../../Services/IProjectService.cs" Link="IProjectService.cs" />
     <Compile Include="../../Models/*.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="../../Utilities/QuadGeometry.cs" Link="QuadGeometry.cs" />
     <Compile Include="../../Utilities/MapMapProjectImporter.cs" Link="MapMapProjectImporter.cs" />
   </ItemGroup>
 </Project>

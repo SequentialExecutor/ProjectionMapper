@@ -11,10 +11,10 @@
 
             <Polygon x:Name="PART_OutputPolygon" Stroke="LimeGreen" StrokeThickness="2" Fill="#4033DB33" Visibility="Collapsed" IsHitTestVisible="False" />
             <!-- Corner resize thumbs -->
-            <Thumb x:Name="PART_Handle_TL" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
-            <Thumb x:Name="PART_Handle_TR" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
-            <Thumb x:Name="PART_Handle_BL" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
-            <Thumb x:Name="PART_Handle_BR" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
+            <Thumb x:Name="PART_Handle_TL" IsEnabled="{Binding SelectedLayer.CanEditMapping, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
+            <Thumb x:Name="PART_Handle_TR" IsEnabled="{Binding SelectedLayer.CanEditMapping, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
+            <Thumb x:Name="PART_Handle_BL" IsEnabled="{Binding SelectedLayer.CanEditMapping, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
+            <Thumb x:Name="PART_Handle_BR" IsEnabled="{Binding SelectedLayer.CanEditMapping, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="12" Height="12" Visibility="Collapsed" Background="White" BorderBrush="Black" BorderThickness="1" />
         </Canvas>
     </Grid>
 </UserControl>

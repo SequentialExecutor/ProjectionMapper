@@ -1,4 +1,5 @@
 using System.Numerics;
+using ProjectionMapper.Utilities;
 using System.Text.Json;
 using ProjectionMapper.Models;
 using ProjectionMapper.Services;
@@ -16,7 +17,7 @@ try
     surface.Layers[0].MeshPoints[0] = new Vector2(.12f, .23f);
     project.Surfaces.Add(surface);
     project.ImportedVideos.Add(new ImportedVideoData { Id = "video", SourcePath = media,
-        TargetMonitorIndex = 2, PlayAudio = true, MeshLayers = new() { new MeshLayerData { Id = "mesh", SourceId = "video", TargetMonitorIndex = 1, Opacity = .65, Visible = false } } });
+        TargetMonitorIndex = 2, PlayAudio = true, MeshLayers = new() { new MeshLayerData { Id = "mesh", SourceId = "video", TargetMonitorIndex = 1, IsLocked = true, Opacity = .65, Visible = false } } });
     project.PlaylistGroups.Add(new PlaylistGroupModel { Name = "Cue", SourceIds = new() { "video" }, PlaybackMode = GroupPlaybackMode.Simultaneous });
     Check(await service.SaveAsync(project, path), "first save");
     Check(project.ImportedVideos[0].SourcePath == media, "save leaves editor paths absolute");
@@ -78,6 +79,17 @@ try
         recovery.MarkRestored(orphan);
     }
     Check(!File.Exists(orphan), "restored snapshot cleaned on normal shutdown");
+    Check(loaded.ImportedVideos[0].MeshLayers[0].IsLocked, "calibration lock round trips");
+    var quad = new Vector2[] { new(0, 0), new(1, 0), new(0, 1), new(1, 1) };
+    Check(QuadGeometry.IsValid(quad), "valid quad");
+    Check(!QuadGeometry.IsValid(new Vector2[] { new(0, 0), new(1, 1), new(0, 1), new(1, 0) }), "crossed quad rejected");
+    Check(!QuadGeometry.IsValid(new Vector2[4]), "degenerate quad rejected");
+    quad[0] = new Vector2(float.NaN, 0);
+    Check(!QuadGeometry.IsValid(quad), "nonfinite quad rejected");
+    var snapped = QuadGeometry.FromPixels(104, 207, 1920, 1080, 10);
+    Check(Math.Abs(snapped.X * 1920 - 100) < .001 && Math.Abs(snapped.Y * 1080 - 210) < .001, "pixel snapping uses output dimensions");
+    var clamped = QuadGeometry.FromPixels(-10, 9999, 1920, 1080);
+    Check(clamped == new Vector2(0, 1), "coordinates clamp to output bounds");
     Console.WriteLine("Persistence regression checks passed.");
 }
 catch (Exception ex)
