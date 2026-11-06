@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using ProjectionMapper.Models;
 using ProjectionMapper.Rendering;
 using ProjectionMapper.Services;
@@ -18,6 +19,15 @@ internal static class ArtworkWindowsChecks
     public static void Run()
     {
         static void Check(bool value, string description) { if (!value) throw new Exception("Windows artwork check: " + description); }
+        // VideoService queues renderer work onto the real WPF application dispatcher.
+        // A console test must provide and drain that dispatcher before inspecting output.
+        var application = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        static void DrainUi()
+        {
+            var frame = new DispatcherFrame();
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame);
+        }
         var request = new ArtworkRequest(ArtworkProvider.OpenAI, "gpt-image-1.5", "Flowers", "watercolor", "gold", "1024x1024", "medium", "opaque", 1,
             new() { new("mesh", "Wall", ArtworkRegion.Full) }, ArtworkFixture.Png, new());
         var asset = ArtworkImaging.OnStaAsync(() => ArtworkImaging.Normalize(new(ArtworkFixture.Png, "Flowers", "test-request"), request)).GetAwaiter().GetResult();
@@ -47,18 +57,18 @@ internal static class ArtworkWindowsChecks
         video.ConfigureStillFallback(sourceId, image, 1);
         Check(video.RegisterLayerAsync(source).GetAwaiter().GetResult(), "source registers offline without FFmpeg or original video");
         Check(video.WaitForDecodersReadyAsync(new[] { sourceId }, 100).GetAwaiter().GetResult(), "still source is immediately ready for playlists");
-        video.RefreshMeshLayerRendering("mesh");
+        video.RefreshMeshLayerRendering("mesh"); DrainUi();
         Check(ReferenceEquals(recorder.Frame, image), "saved artwork renders through original mapping");
         manager.SetArtwork("mesh", half, preview: true);
-        video.RefreshMeshLayerRendering("mesh");
+        video.RefreshMeshLayerRendering("mesh"); DrainUi();
         Check(ReferenceEquals(recorder.Frame, half), "temporary preview overrides permanent artwork");
         manager.TryGetArtwork("mesh", out var permanent, includePreview: false);
         Check(ReferenceEquals(permanent, image), "undo snapshots do not capture temporary previews");
-        manager.ClearArtwork(previewsOnly: true); video.RefreshMeshLayerRendering("mesh");
+        manager.ClearArtwork(previewsOnly: true); video.RefreshMeshLayerRendering("mesh"); DrainUi();
         Check(ReferenceEquals(recorder.Frame, image), "clearing preview restores permanent image");
-        video.EnablePlaylistMode(); video.RefreshMeshLayerRendering("mesh");
+        video.EnablePlaylistMode(); video.RefreshMeshLayerRendering("mesh"); DrainUi();
         Check(recorder.Frame == null, "inactive playlist groups cannot resurrect saved artwork");
-        video.SetActiveRenderLayers(new[] { sourceId }); video.RefreshMeshLayerRendering("mesh");
+        video.SetActiveRenderLayers(new[] { sourceId }); video.RefreshMeshLayerRendering("mesh"); DrainUi();
         Check(recorder.Frame != null, "active artwork cue displays");
         video.PauseLayerAsync(sourceId).GetAwaiter().GetResult();
         video.ResumeLayerAsync(sourceId).GetAwaiter().GetResult();
