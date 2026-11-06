@@ -37,7 +37,10 @@ internal static class ScenePhotoChecks
             var normalized = new byte[8 * 16 * 4]; converted.CopyPixels(normalized, 8 * 4, 0);
             int top = (2 * 8 + 4) * 4, bottom = (13 * 8 + 4) * 4;
             if (normalized[top + 2] < 180 || normalized[bottom] < 180) throw new Exception("EXIF pixel orientation was not corrected.");
-            if (decoded.Metadata is BitmapMetadata normalizedMetadata && normalizedMetadata.ContainsQuery("/app1/ifd/{ushort=315}"))
+            // BitmapImage does not expose metadata; inspect the encoded JPEG frame itself.
+            using var normalizedStream = new MemoryStream(Convert.FromBase64String(photo.ImageBase64));
+            var normalizedFrame = BitmapFrame.Create(normalizedStream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            if (normalizedFrame.Metadata is BitmapMetadata normalizedMetadata && normalizedMetadata.ContainsQuery("/app1/ifd/{ushort=315}"))
                 throw new Exception("Original metadata was retained in the upload image.");
             if (photo.OriginalFileName != Path.GetFileName(path)) throw new Exception("Photo provenance should contain only the file name.");
             Console.WriteLine("Scene photo orientation, normalization, and metadata-stripping checks passed.");
