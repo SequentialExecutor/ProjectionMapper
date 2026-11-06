@@ -177,6 +177,7 @@ namespace ProjectionMapper
                 // Handle window closing with proper cleanup and shutdown
                 Closing += async (sender, e) =>
                 {
+                    bool ownsClose = false;
                     try
                     {
                         if (_closeApproved) return;
@@ -185,6 +186,7 @@ namespace ProjectionMapper
                         e.Cancel = true;
                         if (_closingInProgress) return;
                         _closingInProgress = true;
+                        ownsClose = true;
                         Debug.WriteLine("MainWindow: Window closing, checking for unsaved changes");
                         
                         // Check actual persisted state, including edits without undo records.
@@ -249,7 +251,7 @@ namespace ProjectionMapper
                         Debug.WriteLine($"MainWindow: Closing handler failed: {ex}");
                         MessageBox.Show($"Could not close safely: {ex.Message}", "Close Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
-                    finally { _closingInProgress = false; }
+                    finally { if (ownsClose) _closingInProgress = false; }
                 };
 
                 System.Diagnostics.Debug.WriteLine("MainWindow constructor completed successfully");
