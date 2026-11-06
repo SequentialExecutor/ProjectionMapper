@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using ProjectionMapper.Rendering;
 
 internal static class RenderingChecks
@@ -51,10 +52,20 @@ internal static class RenderingChecks
         renderer.InitializeAsync(32, 32).GetAwaiter().GetResult();
         BitmapSource? output = null;
         renderer.FrameReady += bitmap => output = bitmap;
+        void Render()
+        {
+            output = null;
+            renderer.RenderFrameAsync().GetAwaiter().GetResult();
+            // FrameReady is queued when a WPF Application is present; exercise that
+            // production path as well as standalone rendering without stale results.
+            var frame = new DispatcherFrame();
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame);
+            Check(output != null, "composited frame emitted");
+        }
         void CheckBlack(string description)
         {
-            renderer.RenderFrameAsync().GetAwaiter().GetResult();
-            Check(output != null, "composited frame emitted");
+            Render();
             var data = Pixels(output!);
             Check(Enumerable.Range(0, 32 * 32).All(i => data[i * 4] == 0 && data[i * 4 + 1] == 0 && data[i * 4 + 2] == 0), description);
         }
@@ -76,7 +87,7 @@ internal static class RenderingChecks
         var submitted = new[] { new Point(0, 0), new Point(32, 0), new Point(0, 32), new Point(32, 32) };
         renderer.SubmitLayerFrame("test", image, new Rect(0, 0, 32, 32), submitted, 1);
         Array.Fill(submitted, new Point(0, 0));
-        renderer.RenderFrameAsync().GetAwaiter().GetResult();
+        Render();
         Check(Pixels(output!).Where((_, i) => i % 4 != 3).Any(value => value != 0), "submission snapshots mutable quad coordinates");
         Check(renderer.LastRenderMilliseconds > 0, "actual render timing recorded");
         var pattern = CalibrationPattern.Create(320, 180, 2, 32);
