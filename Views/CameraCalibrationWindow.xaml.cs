@@ -77,12 +77,19 @@ namespace ProjectionMapper.Views
             if (_previewRevision >= 0) Status.Text = "Inputs changed. The projected outline is the previous preview; fit and project again before applying.";
             _revision++; _fit = null; _previewRevision = -1; Confirmed.IsChecked = false; Metrics.Text = string.Empty; Redraw();
         }
+        private static string FailureMessage(Exception error)
+        {
+            for (Exception? cause = error; cause != null; cause = cause.InnerException)
+                if (cause is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+                    return "Local marker imaging could not load. Use the packaged Windows x64 build and install the Microsoft Visual C++ 2015–2022 x64 redistributable. Already accepted geometry can still play without marker detection.";
+            return error.Message;
+        }
         private async Task Run(Func<CancellationToken, Task> work)
         {
             if (_busy) return; _busy = true; Controls.IsEnabled = Apply.IsEnabled = false; CancelWork.IsEnabled = true; _cancellation = new();
             try { EnsureCurrent(); await work(_cancellation.Token); }
             catch (OperationCanceledException) { Status.Text = "Calibration operation cancelled; mapping was not changed."; }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Camera calibration failed: {ex}"); Status.Text = ex.Message; }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Camera calibration failed: {ex}"); Status.Text = FailureMessage(ex); }
             finally { _busy = false; _cancellation.Dispose(); _cancellation = null; Controls.IsEnabled = Apply.IsEnabled = true; CancelWork.IsEnabled = false; if (_closeAfterCancel) Close(); }
         }
         private async void Generate_Click(object sender, RoutedEventArgs e) => await Run(async token =>
