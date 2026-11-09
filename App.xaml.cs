@@ -1,4 +1,4 @@
-﻿using System.Configuration;
+using System.Configuration;
 using System.Data;
 using System.Windows;
 using System.Diagnostics;
@@ -26,6 +26,7 @@ namespace ProjectionMapper
         {
             try
             {
+                ProjectionMapper.Services.UiThemeService.Initialize(this);
                 Debug.WriteLine("App: Starting application initialization");
 
                 // Set per-monitor DPI awareness for proper multi-monitor support
@@ -70,7 +71,7 @@ namespace ProjectionMapper
             catch (Exception ex)
             {
                 Debug.WriteLine($"App: Critical startup failure: {ex}");
-                
+
                 try
                 {
                     MessageBox.Show(
@@ -84,7 +85,7 @@ namespace ProjectionMapper
                     // If we can't even show a message box, write to debug and exit
                     Debug.WriteLine("App: Unable to show error dialog, exiting");
                 }
-                
+
                 Shutdown(3);
             }
         }

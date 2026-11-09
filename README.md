@@ -23,3 +23,5 @@ Use **Collect / preflight / rehearsal…** to create a verified project folder, 
 ### Camera-assisted planar calibration
 
 Select an unlocked planar mesh assigned to a projector and open **Camera calibration…**. Project coded markers, import their photograph, inspect/correct matches, mark the target corners, and review independent projector-pixel errors before projecting an outline and applying. Accepted photos/evidence persist in format 7 and collected projects. This local workflow requires no AI token; physical accuracy must be measured on the installation. See [camera calibration](ToDo/CAMERA-CALIBRATION.md).
+
+See the [workspace design guide](ToDo/UI-DESIGN.md) for the editor layout and appearance controls.

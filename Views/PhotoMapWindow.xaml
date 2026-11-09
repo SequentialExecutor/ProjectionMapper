@@ -1,11 +1,11 @@
-<Window x:Class="ProjectionMapper.Views.PhotoMapWindow"
+<Window Style="{DynamicResource {x:Type Window}}" x:Class="ProjectionMapper.Views.PhotoMapWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Photo to map — assisted surface mapping" Width="1200" Height="820" MinWidth="1000" MinHeight="650"
         WindowStartupLocation="CenterOwner" KeyDown="Window_KeyDown">
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-            <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="DarkBlue" Margin="0,0,0,8" />
+            <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="{DynamicResource Ui.AccentText}" Margin="0,0,0,8" />
             <CheckBox x:Name="CreateMeshes" Content="Create preview-only meshes from accepted convex quads for the selected video source" />
             <CheckBox x:Name="Uncalibrated" Content="I understand photo positions are only a starting point; I will align the meshes to the projector manually." Margin="0,5" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -49,7 +49,7 @@
                     <Button Content="Undo" Click="Undo_Click" Margin="0,0,6,0" />
                     <Button Content="Redo" Click="Redo_Click" />
                 </StackPanel>
-                <Border Grid.Row="1" Background="#20242A" ClipToBounds="True">
+                <Border Grid.Row="1" Background="{DynamicResource Ui.Canvas}" ClipToBounds="True">
                     <Viewbox x:Name="PhotoView" Stretch="Uniform">
                         <Canvas x:Name="PhotoCanvas" Width="800" Height="500" Focusable="True" Background="Transparent"
                                 MouseLeftButtonDown="Photo_MouseDown" MouseMove="Photo_MouseMove" MouseLeftButtonUp="Photo_MouseUp" />

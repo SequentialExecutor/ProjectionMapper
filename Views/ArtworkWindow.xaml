@@ -1,10 +1,10 @@
-<Window x:Class="ProjectionMapper.Views.ArtworkWindow"
+<Window Style="{DynamicResource {x:Type Window}}" x:Class="ProjectionMapper.Views.ArtworkWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ProjectionMapper.Views"
  Title="AI artwork library" Width="1180" Height="820" MinWidth="1000" MinHeight="650" WindowStartupLocation="CenterOwner">
  <Window.Resources><local:ArtworkThumbnailConverter x:Key="ArtworkThumbnail" /></Window.Resources>
  <DockPanel Margin="16">
   <StackPanel DockPanel.Dock="Bottom">
-   <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="DarkBlue" Margin="0,8" />
+   <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="{DynamicResource Ui.AccentText}" Margin="0,8" />
    <WrapPanel HorizontalAlignment="Right">
     <Button x:Name="CancelRequest" Content="Cancel generation" Click="Cancel_Click" IsEnabled="False" Margin="4" Padding="10,5" />
     <Button Content="Restore preview" Click="RestorePreview_Click" Margin="4" Padding="10,5" />
@@ -46,7 +46,7 @@
    </StackPanel></ScrollViewer>
    <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <StackPanel><TextBlock Text="Variants and project library" FontSize="18" FontWeight="SemiBold" /><TextBlock Text="Generation runs in the background; the main editor and playback remain available. Projector preview is temporary and follows playlist visibility." TextWrapping="Wrap" Margin="0,6" /></StackPanel>
-    <Border Grid.Row="1" Background="#20242A"><Image x:Name="ArtworkPreview" Stretch="Uniform" /></Border>
+    <Border Grid.Row="1" Background="{DynamicResource Ui.Canvas}"><Image x:Name="ArtworkPreview" Stretch="Uniform" /></Border>
     <ListBox x:Name="Images" Grid.Row="2" Height="125" SelectionChanged="Image_Changed" Margin="0,8" ScrollViewer.HorizontalScrollBarVisibility="Auto">
      <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
      <ListBox.ItemTemplate><DataTemplate><StackPanel Width="130" Margin="4"><Image Source="{Binding ThumbnailBase64, Converter={StaticResource ArtworkThumbnail}}" Height="75" Stretch="Uniform" /><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" /></StackPanel></DataTemplate></ListBox.ItemTemplate>

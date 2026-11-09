@@ -91,7 +91,7 @@ namespace ProjectionMapper
             foreach (var group in _vm.PlaylistGroups) group.IsActive = group.Id == current?.Id;
             foreach (var item in _vm.ProjectTree.OfType<ProjectionMapper.ViewModels.PlaylistGroupTreeViewModel>()) item.IsActive = item.Id == current?.Id;
             PART_CurrentCue.Text = current == null ? "Current cue: stopped" : $"Current: {current.Name} · {current.AdvanceMode}{(_playlistService.IsPaused ? " · paused" : string.Empty)}";
-            PART_NextCue.Text = next == null ? "Next: end of playlist" : $"Next: {next.Name} · {next.SourceIds.Count} source(s)";
+            PART_NextCue.Text = next == null ? (_vm.PlaylistGroups.Count == 0 ? "Add cue groups to arrange a show" : "End of playlist") : $"Next: {next.Name} · {next.SourceIds.Count} source(s)";
             BitmapSource? frame = null;
             if (next != null) foreach (var source in next.SourceIds)
             {
@@ -101,7 +101,7 @@ namespace ProjectionMapper
                 if (frame != null) break;
             }
             PART_NextCueImage.Source = frame;
-            PART_NextCueNote.Text = frame == null ? "No cached next-cue image yet" : "Cached source preview — first available surface; unwarped";
+            PART_NextCueNote.Text = frame == null ? "" : "Next cue preview";
         }
         private void SurfaceControls_Click(object sender, RoutedEventArgs e)
         {

@@ -84,7 +84,7 @@ namespace ProjectionMapper
             try
             {
                 System.Diagnostics.Debug.WriteLine("MainWindow constructor starting...");
-                
+
                 InitializeComponent();
 
                 _vm = new MainWindowViewModel();
@@ -114,13 +114,14 @@ namespace ProjectionMapper
                 _videoService = new VideoService(_rendererManager, ffmpegPath: null);
                 _fileDialog = new FileDialogService();
                 _projectService = new ProjectService();
-                
+
                 // Create PlaylistService for group-based playback
                 _playlistService = new PlaylistService(_videoService);
                 InitializeArtistControls();
                 InitializeDeployment();
+                InitializeWorkspaceUi();
                 UpdateLoopingMode(_vm.IsPlaylistMode);
-                
+
                 // Expose VideoService so MeshEditorControl can subscribe for isolated previews
                 this.Resources["VideoService"] = _videoService;
 
@@ -198,7 +199,7 @@ namespace ProjectionMapper
                         _closingInProgress = true;
                         ownsClose = true;
                         Debug.WriteLine("MainWindow: Window closing, checking for unsaved changes");
-                        
+
                         await CloseArtworkEditorAsync();
                         // Check actual persisted state, including edits without undo records.
                         RefreshDirtyState();
@@ -231,30 +232,30 @@ namespace ProjectionMapper
                         await CloseDeploymentAsync();
                         if (_recovery != null) await _recovery.DisposeAsync();
                         Debug.WriteLine("MainWindow: Disposing services");
-                        
+
                         // Stop all video playback first - use Task.Run to avoid deadlock on UI thread
-                        try 
-                        { 
-                            Task.Run(async () => await _videoService.StopAllAsync()).Wait(2000); 
-                        } 
-                        catch (Exception ex) 
-                        { 
-                            Debug.WriteLine($"MainWindow: StopAllAsync failed: {ex}"); 
+                        try
+                        {
+                            Task.Run(async () => await _videoService.StopAllAsync()).Wait(2000);
                         }
-                        
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"MainWindow: StopAllAsync failed: {ex}");
+                        }
+
                         // Close all fullscreen windows first
                         foreach (var kv in _activeMonitorWindows.ToList())
                         {
                             try { kv.Value.Close(); } catch (Exception ex) { Debug.WriteLine($"MainWindow: Closing fullscreen window failed: {ex}"); }
                         }
                         _activeMonitorWindows.Clear();
-                        
+
                         try { _rendererManager?.Dispose(); } catch (Exception ex) { Debug.WriteLine($"MainWindow: RendererManager dispose failed: {ex}"); }
                         try { _videoService?.Dispose(); } catch (Exception ex) { Debug.WriteLine($"MainWindow: VideoService dispose failed: {ex}"); }
                         try { _playlistService?.Dispose(); } catch (Exception ex) { Debug.WriteLine($"MainWindow: PlaylistService dispose failed: {ex}"); }
 
                         Debug.WriteLine("MainWindow: Cleanup completed, shutting down application");
-                        
+
                         _closeApproved = true;
                         Application.Current.Shutdown();
                     }
@@ -271,17 +272,17 @@ namespace ProjectionMapper
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"MainWindow constructor failed: {ex}");
-                
+
                 // Show error dialog
                 try
                 {
-                    MessageBox.Show($"Failed to initialize application: {ex.Message}\n\nCheck debug output for details.", 
-                        "Initialization Error", 
-                        MessageBoxButton.OK, 
+                    MessageBox.Show($"Failed to initialize application: {ex.Message}\n\nCheck debug output for details.",
+                        "Initialization Error",
+                        MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
                 catch { }
-                
+
                 throw; // Re-throw to prevent partially initialized window
             }
         }
@@ -378,7 +379,7 @@ namespace ProjectionMapper
             try
             {
                 Debug.WriteLine("MainWindow: Import requested");
-                
+
                 var path = await _fileDialog.ShowOpenFileDialogAsync(
                     "Import Video",
                     "Video Files (*.mp4;*.avi;*.mov;*.mkv;*.wmv)|*.mp4;*.avi;*.mov;*.mkv;*.wmv|All Files (*.*)|*.*");
@@ -1055,9 +1056,9 @@ namespace ProjectionMapper
                     SetWindowLong(hwnd, GWL_STYLE, (prevStyle | WS_POPUP) & ~0x00C00000); // Remove WS_CAPTION
 
                     Debug.WriteLine($"MainWindow: Calling SetWindowPos for monitor {monitorIndex} -> virtual rect {mon.Left},{mon.Top} {mon.Width}x{mon.Height}, physical: {mon.PhysicalWidth}x{mon.PhysicalHeight}");
-                    
+
                     // Use SetWindowPos with virtual screen coordinates (what Windows expects)
-                    bool ok = SetWindowPos(hwnd, HWND_TOPMOST, mon.Left, mon.Top, mon.Width, mon.Height, 
+                    bool ok = SetWindowPos(hwnd, HWND_TOPMOST, mon.Left, mon.Top, mon.Width, mon.Height,
                         SWP_SHOWWINDOW | SWP_FRAMECHANGED);
                     var err = Marshal.GetLastWin32Error();
                     Debug.WriteLine($"MainWindow: SetWindowPos returned {ok}, GetLastError={err}");
@@ -1065,7 +1066,7 @@ namespace ProjectionMapper
                     if (!ok)
                     {
                         // Retry with different flags
-                        ok = SetWindowPos(hwnd, HWND_TOPMOST, mon.Left, mon.Top, mon.Width, mon.Height, 
+                        ok = SetWindowPos(hwnd, HWND_TOPMOST, mon.Left, mon.Top, mon.Width, mon.Height,
                             SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOACTIVATE);
                         err = Marshal.GetLastWin32Error();
                         Debug.WriteLine($"MainWindow: Retry SetWindowPos returned {ok}, GetLastError={err}");
@@ -1387,7 +1388,7 @@ namespace ProjectionMapper
 
                 // Collect monitor info using EnumDisplayMonitors for accurate physical coordinates
                 var monitorList = new List<(IntPtr hMonitor, RECT bounds, string deviceName, bool isPrimary)>();
-                
+
                 MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData) =>
                 {
                     try
@@ -1420,14 +1421,14 @@ namespace ProjectionMapper
                 for (int i = 0; i < monitorList.Count; i++)
                 {
                     var (hMonitor, bounds, deviceName, isPrimary) = monitorList[i];
-                    
+
                     // EnumDisplayMonitors returns the virtual screen coordinates (DPI-scaled)
                     // These are used for window positioning with SetWindowPos
                     int virtualW = bounds.Right - bounds.Left;
                     int virtualH = bounds.Bottom - bounds.Top;
                     int virtualLeft = bounds.Left;
                     int virtualTop = bounds.Top;
-                    
+
                     // Physical dimensions default to virtual (will be updated if DPI scaling detected)
                     int physicalW = virtualW;
                     int physicalH = virtualH;
@@ -1451,7 +1452,7 @@ namespace ProjectionMapper
                                 // For displays with DPI scaling:
                                 // - EnumDisplayMonitors gives us virtual/scaled coordinates (e.g., 2880x1620 at 150% DPI)
                                 // - EnumDisplaySettings gives us the logical resolution (e.g., 1920x1080)
-                                // 
+                                //
                                 // If the display settings resolution differs from virtual bounds,
                                 // it indicates DPI scaling is in effect. In this case:
                                 // - Use virtual bounds for window positioning (SetWindowPos uses virtual coords)
@@ -1541,6 +1542,7 @@ namespace ProjectionMapper
                 Debug.WriteLine($"MainWindow: Found {_monitorItems.Count} monitors");
 
                 // Reconcile fullscreen output windows with the latest monitor inventory
+                UpdateDisplaySummary();
                 EnsureMonitorWindows();
             }
             catch (Exception ex)
@@ -2239,13 +2241,13 @@ namespace ProjectionMapper
                 // In playlist mode, looping is already disabled (set earlier in LoadProjectState)
                 // Videos will play normally and stop at EOF, waiting for the playlist to advance
                 // We don't need to pause them here - let them play so the user can see the preview
-               
+
 
                 Debug.WriteLine("MainWindow: Project state loaded successfully");
 
                  // Update fullscreen window assignments to reflect the freshly loaded project
                  EnsureMonitorWindows();
- 
+
                 // Automatically start playlist playback so only one group runs at a time
                 await EnsurePlaylistAutostartAsync().ConfigureAwait(false);
              }
@@ -2329,7 +2331,7 @@ namespace ProjectionMapper
 
         // Event handlers required by XAML
         private void Window_Loaded(object sender, RoutedEventArgs e) { }
-        
+
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -2343,7 +2345,7 @@ namespace ProjectionMapper
                 Application.Current.Shutdown();
             }
         }
-        
+
         private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -2362,7 +2364,7 @@ namespace ProjectionMapper
                 MessageBox.Show($"Failed to open About dialog: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        
+
         private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             try
@@ -2379,7 +2381,7 @@ namespace ProjectionMapper
                 {
                     // Find the parent imported video that contains this mesh
                     var parentVideo = _vm.ImportedVideos.FirstOrDefault(v => v.MeshLayers.Contains(meshVm));
-                    
+
                     if (isCtrlPressed)
                     {
                         // Ctrl+click: toggle this mesh in selection
@@ -2399,14 +2401,14 @@ namespace ProjectionMapper
                         _vm.MeshSelectionAnchor = meshVm;
                         Debug.WriteLine($"MainWindow: Selected mesh layer: {meshVm.Name} (parent: {parentVideo?.Name ?? "unknown"})");
                     }
-                    
+
                     // Set parent video
                     if (parentVideo != null)
                     {
                         _vm.SelectedImportedVideo = parentVideo;
                     }
                     _vm.SelectedPlaylistGroup = null;
-                    
+
                     // Sync PART_MeshMonitorCombo with the mesh layer's target monitor
                     var targetMonitor = meshVm.Model?.TargetMonitorIndex ?? -1;
                     var comboIndex = targetMonitor + 1;
@@ -2437,7 +2439,7 @@ namespace ProjectionMapper
                             _vm.SelectedPlaylistGroup = groupVm;
                             Debug.WriteLine($"MainWindow: Selected playlist group: {groupVm.Name}");
                         }
-                        
+
                         // Reset mesh monitor combo when no mesh is selected
                         PART_MeshMonitorCombo.SelectedIndex = 0;
                     }
@@ -2447,7 +2449,7 @@ namespace ProjectionMapper
                         var video = videoTree.ImportedVideo;
                         _vm.SelectedImportedVideo = video;
                         Debug.WriteLine($"MainWindow: Selected imported video: {video.Name}");
-                        
+
                         // Reset mesh monitor combo when no mesh is selected
                         PART_MeshMonitorCombo.SelectedIndex = 0;
                     }
@@ -2469,7 +2471,7 @@ namespace ProjectionMapper
                 Debug.WriteLine($"MainWindow: TreeView_SelectedItemChanged failed: {ex}");
             }
         }
-        
+
         private void TreeView_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             try
@@ -2560,13 +2562,13 @@ namespace ProjectionMapper
                 }
 
                 var currentName = _vm.SelectedPlaylistGroup.Name;
-                
+
                 // Create a simple input dialog using standard WPF dialogs
                 var dialog = new Window
                 {
                     Title = "Rename Group",
                     Width = 350,
-                    Height = 150,
+                    Height = 220,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     Owner = this,
                     ResizeMode = ResizeMode.NoResize
@@ -2611,21 +2613,21 @@ namespace ProjectionMapper
                     {
                         // Update the ViewModel's name (this updates the Model as well)
                         _vm.SelectedPlaylistGroup.Name = newName;
-                        
+
                         // Also update the underlying model directly to ensure sync
                         _vm.SelectedPlaylistGroup.Model.Name = newName;
-                        
+
                         // Find and update the corresponding tree view item
                         var treeItem = _vm.ProjectTree
                             .OfType<PlaylistGroupTreeViewModel>()
                             .FirstOrDefault(g => g.Id == _vm.SelectedPlaylistGroup.Id);
-                        
+
                         if (treeItem != null)
                         {
                             treeItem.Name = newName;
                             treeItem.RefreshDisplayText();
                         }
-                        
+
                         _vm.MarkProjectDirty();
                         Debug.WriteLine($"MainWindow: Renamed group from '{currentName}' to '{newName}'");
                     }
@@ -2644,14 +2646,14 @@ namespace ProjectionMapper
                 if (_vm?.DeleteGroupCommand != null && _vm.DeleteGroupCommand.CanExecute(null))
                 {
                     var groupName = _vm.SelectedPlaylistGroup?.Name ?? "(unknown)";
-                    
+
                     // Confirm deletion
                     var result = MessageBox.Show(
                         $"Are you sure you want to delete the group '{groupName}'?\n\nThis action cannot be undone.",
                         "Delete Group",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
-                    
+
                     if (result == MessageBoxResult.Yes)
                     {
                         _vm.DeleteGroupCommand.Execute(null);
@@ -2736,13 +2738,13 @@ namespace ProjectionMapper
                 // Load groups into playlist service and start playing
                 var groupModels = _vm.PlaylistGroups.Select(g => g.Model).ToList();
                 await _playlistService.StartPlaylistAsync(groupModels);
-                
+
                 // Jump to the selected group if not already the first one
                 if (groupIndex > 0)
                 {
                     await _playlistService.JumpToGroupAsync(groupIndex);
                 }
-                
+
                 _vm.SetPlaybackState(true);
 
                 Debug.WriteLine($"MainWindow: Started playing group '{_vm.SelectedPlaylistGroup.Name}' (index {groupIndex})");
@@ -2796,39 +2798,39 @@ namespace ProjectionMapper
             try
             {
                 Debug.WriteLine("MainWindow: MeshContextMenu_Opened");
-                
+
                 if (sender is not ContextMenu contextMenu)
                 {
                     return;
                 }
-                
+
                 // Get selection count for updating menu item headers
-                var selectedCount = _vm.SelectedMeshLayers.Count > 0 
-                    ? _vm.SelectedMeshLayers.Count 
+                var selectedCount = _vm.SelectedMeshLayers.Count > 0
+                    ? _vm.SelectedMeshLayers.Count
                     : (_vm.SelectedMeshLayer != null ? 1 : 0);
-                
+
                 // Update headers based on selection count
                 foreach (var item in contextMenu.Items)
                 {
                     if (item is MenuItem menuItem)
                     {
                         var header = menuItem.Header?.ToString() ?? "";
-                        
+
                         if (header.StartsWith("Copy Mesh"))
                         {
-                            menuItem.Header = selectedCount > 1 
-                                ? $"Copy {selectedCount} Meshes" 
+                            menuItem.Header = selectedCount > 1
+                                ? $"Copy {selectedCount} Meshes"
                                 : "Copy Mesh";
                         }
                         else if (header.StartsWith("Delete Mesh"))
                         {
-                            menuItem.Header = selectedCount > 1 
-                                ? $"Delete {selectedCount} Mesh Layers" 
+                            menuItem.Header = selectedCount > 1
+                                ? $"Delete {selectedCount} Mesh Layers"
                                 : "Delete Mesh Layer";
                         }
                     }
                 }
-                
+
                 Debug.WriteLine($"MainWindow: Mesh context menu opened with {selectedCount} mesh(es) selected");
             }
             catch (Exception ex)
@@ -2842,16 +2844,16 @@ namespace ProjectionMapper
             try
             {
                 Debug.WriteLine("MainWindow: VideoContextMenu_Opened");
-                
+
                 if (sender is not ContextMenu contextMenu)
                 {
                     return;
                 }
-                
+
                 // Find the "Add to Group" menu item
                 MenuItem? addToGroupItem = null;
                 MenuItem? removeFromGroupItem = null;
-                
+
                 foreach (var item in contextMenu.Items)
                 {
                     if (item is MenuItem menuItem)
@@ -2866,15 +2868,15 @@ namespace ProjectionMapper
                         }
                     }
                 }
-                
+
                 // Get the selected video from the tree view
                 var selectedVideoTree = PART_ProjectTree.SelectedItem as ImportedVideoTreeViewModel;
                 var selectedVideo = selectedVideoTree?.ImportedVideo ?? _vm.SelectedImportedVideo;
-                
+
                 // Determine if the video is currently in a group
                 bool isInGroup = false;
                 PlaylistGroupViewModel? currentGroup = null;
-                
+
                 if (selectedVideo != null)
                 {
                     foreach (var group in _vm.PlaylistGroups)
@@ -2887,7 +2889,7 @@ namespace ProjectionMapper
                         }
                     }
                 }
-                
+
                 // Configure "Remove from Group" visibility
                 if (removeFromGroupItem != null)
                 {
@@ -2897,12 +2899,12 @@ namespace ProjectionMapper
                         removeFromGroupItem.Header = $"Remove from '{currentGroup.Name}'";
                     }
                 }
-                
+
                 // Populate "Add to Group" submenu with available groups
                 if (addToGroupItem != null)
                 {
                     addToGroupItem.Items.Clear();
-                    
+
                     if (_vm.PlaylistGroups.Count == 0)
                     {
                         var noGroupsItem = new MenuItem { Header = "(No groups available)", IsEnabled = false };
@@ -2914,18 +2916,18 @@ namespace ProjectionMapper
                         {
                             // Skip the current group if the video is already in it
                             bool alreadyInThisGroup = group.Model.SourceIds.Contains(selectedVideo?.Id ?? string.Empty);
-                            
+
                             var groupMenuItem = new MenuItem
                             {
                                 Header = alreadyInThisGroup ? $"{group.Name} (already added)" : group.Name,
                                 Tag = group,
                                 IsEnabled = !alreadyInThisGroup
                             };
-                            
+
                             groupMenuItem.Click += AddVideoToGroupSubmenuItem_Click;
                             addToGroupItem.Items.Add(groupMenuItem);
                         }
-                        
+
                         // Add separator and "New Group..." option
                         addToGroupItem.Items.Add(new Separator());
                         var newGroupItem = new MenuItem { Header = "New Group..." };
@@ -2939,7 +2941,7 @@ namespace ProjectionMapper
                 Debug.WriteLine($"VideoContextMenu_Opened failed: {ex}");
             }
         }
-        
+
         private void AddVideoToGroupSubmenuItem_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -2949,20 +2951,20 @@ namespace ProjectionMapper
                     Debug.WriteLine("MainWindow: AddVideoToGroupSubmenuItem_Click - invalid sender or tag");
                     return;
                 }
-                
+
                 // Get the selected video
                 var selectedVideoTree = PART_ProjectTree.SelectedItem as ImportedVideoTreeViewModel;
                 var selectedVideo = selectedVideoTree?.ImportedVideo ?? _vm.SelectedImportedVideo;
-                
+
                 if (selectedVideo == null)
                 {
                     Debug.WriteLine("MainWindow: AddVideoToGroupSubmenuItem_Click - no video selected");
                     return;
                 }
-                
+
                 // Remove from any existing group first (video can only be in one group)
                 RemoveVideoFromAllGroups(selectedVideo);
-                
+
                 // Add to the target group
                 if (!targetGroup.Model.SourceIds.Contains(selectedVideo.Id))
                 {
@@ -2970,7 +2972,7 @@ namespace ProjectionMapper
                     targetGroup.Videos.Add(selectedVideo);
                     targetGroup.RefreshVideoCount();
                 }
-                
+
                 _vm.MarkProjectDirty();
                 _vm.RefreshProjectTree();
                 Debug.WriteLine($"MainWindow: Added video '{selectedVideo.Name}' to group '{targetGroup.Name}'");
@@ -2980,7 +2982,7 @@ namespace ProjectionMapper
                 Debug.WriteLine($"AddVideoToGroupSubmenuItem_Click failed: {ex}");
             }
         }
-        
+
         private void AddVideoToNewGroup_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -2988,22 +2990,22 @@ namespace ProjectionMapper
                 // Get the selected video
                 var selectedVideoTree = PART_ProjectTree.SelectedItem as ImportedVideoTreeViewModel;
                 var selectedVideo = selectedVideoTree?.ImportedVideo ?? _vm.SelectedImportedVideo;
-                
+
                 if (selectedVideo == null)
                 {
                     Debug.WriteLine("MainWindow: AddVideoToNewGroup_Click - no video selected");
                     return;
                 }
-                
+
                 // Remove from any existing group first (video can only be in one group)
                 RemoveVideoFromAllGroups(selectedVideo);
-                
+
                 // Create a new group
                 if (_vm.CreateGroupCommand.CanExecute(null))
                 {
                     _vm.CreateGroupCommand.Execute(null);
                 }
-                
+
                 // Add the video to the newly created group (should be the selected one now)
                 if (_vm.SelectedPlaylistGroup != null)
                 {
@@ -3013,7 +3015,7 @@ namespace ProjectionMapper
                         _vm.SelectedPlaylistGroup.Videos.Add(selectedVideo);
                         _vm.SelectedPlaylistGroup.RefreshVideoCount();
                     }
-                    
+
                     _vm.MarkProjectDirty();
                     _vm.RefreshProjectTree();
                     Debug.WriteLine($"MainWindow: Created new group '{_vm.SelectedPlaylistGroup.Name}' and added video '{selectedVideo.Name}'");
@@ -3024,7 +3026,7 @@ namespace ProjectionMapper
                 Debug.WriteLine($"AddVideoToNewGroup_Click failed: {ex}");
             }
         }
-        
+
         /// <summary>
         /// Helper method to remove a video from all playlist groups.
         /// Videos can only be in one group at a time.
@@ -3032,7 +3034,7 @@ namespace ProjectionMapper
         private void RemoveVideoFromAllGroups(ImportedVideoViewModel video)
         {
             if (video == null) return;
-            
+
             foreach (var group in _vm.PlaylistGroups)
             {
                 if (group.Model.SourceIds.Contains(video.Id))
@@ -3047,8 +3049,8 @@ namespace ProjectionMapper
 
         private void DeleteSourceMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 Debug.WriteLine("MainWindow: DeleteSourceMenuItem_Click");
                 DeleteSelectedVideo();
             }
@@ -3057,23 +3059,23 @@ namespace ProjectionMapper
 
         private void RemoveVideoFromGroupMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 Debug.WriteLine("MainWindow: RemoveVideoFromGroupMenuItem_Click");
-                
+
                 // Get the selected video from the tree view (more reliable than _vm.SelectedImportedVideo)
                 var selectedVideoTree = PART_ProjectTree.SelectedItem as ImportedVideoTreeViewModel;
                 var video = selectedVideoTree?.ImportedVideo ?? _vm.SelectedImportedVideo;
-                
+
                 if (video == null)
                 {
                     Debug.WriteLine("MainWindow: RemoveVideoFromGroupMenuItem_Click - no video selected");
                     return;
                 }
-                
+
                 // Remove the video from all groups (should only be in one, but check all to be safe)
                 RemoveVideoFromAllGroups(video);
-                
+
                 _vm.MarkProjectDirty();
                 _vm.RefreshProjectTree();
                 Debug.WriteLine($"MainWindow: Removed '{video.Name}' from all groups");
@@ -3083,8 +3085,8 @@ namespace ProjectionMapper
 
         private void CopyMeshMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 var selectedCount = _vm.SelectedMeshLayers.Count > 0 ? _vm.SelectedMeshLayers.Count : (_vm.SelectedMeshLayer != null ? 1 : 0);
                 Debug.WriteLine($"MainWindow: CopyMeshMenuItem_Click ({selectedCount} mesh(es) selected)");
                 if (_vm.CopyMeshCommand?.CanExecute(null) == true)
@@ -3102,8 +3104,8 @@ namespace ProjectionMapper
 
         private void PasteMeshMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 Debug.WriteLine("MainWindow: PasteMeshMenuItem_Click");
                 if (_vm.PasteMeshCommand?.CanExecute(null) == true)
                 {
@@ -3121,8 +3123,8 @@ namespace ProjectionMapper
 
         private void HideSourceOutputMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 Debug.WriteLine("MainWindow: HideSourceOutputMenuItem_Click");
                 if (_vm.SelectedImportedVideo?.HostLayer != null)
                 {
@@ -3136,8 +3138,8 @@ namespace ProjectionMapper
 
         private void RenameMeshMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 Debug.WriteLine("MainWindow: RenameMeshMenuItem_Click");
                 if (_vm.SelectedMeshLayer == null)
                 {
@@ -3146,13 +3148,13 @@ namespace ProjectionMapper
                 }
 
                 var currentName = _vm.SelectedMeshLayer.Name;
-                
+
                 // Create a simple input dialog
                 var dialog = new Window
                 {
                     Title = "Rename Mesh Layer",
                     Width = 350,
-                    Height = 150,
+                    Height = 220,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     Owner = this,
                     ResizeMode = ResizeMode.NoResize
@@ -3205,8 +3207,8 @@ namespace ProjectionMapper
 
         private void DeleteMeshMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            try 
-            { 
+            try
+            {
                 Debug.WriteLine("MainWindow: DeleteMeshMenuItem_Click");
                 DeleteSelectedMeshLayer();
             }
@@ -3242,13 +3244,13 @@ namespace ProjectionMapper
                 // Use the ViewModel's delete command which supports multi-selection
                 if (_vm.DeleteMeshCommand?.CanExecute(null) == true)
                 {
-                    var count = _vm.SelectedMeshLayers.Count > 0 
-                        ? _vm.SelectedMeshLayers.Count 
+                    var count = _vm.SelectedMeshLayers.Count > 0
+                        ? _vm.SelectedMeshLayers.Count
                         : (_vm.SelectedMeshLayer != null ? 1 : 0);
-                    
+
                     _vm.DeleteMeshCommand.Execute(null);
                     _vm.MarkProjectDirty();
-                    
+
                     Debug.WriteLine($"MainWindow: Deleted {count} mesh layer(s)");
                 }
             }

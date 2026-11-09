@@ -19,6 +19,7 @@ internal static class Program
     {
         try
         {
+            UiThemeService.Initialize(Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown }, loadPreference: false);
             var preview = new RecordingRenderer();
             using var manager = new RendererManager(preview);
             var outputs = (ConcurrentDictionary<int, IRenderer>)typeof(RendererManager)
@@ -88,6 +89,7 @@ internal static class Program
             ArtistWindowsChecks.Run();
             DeploymentWindowsChecks.Run();
             CameraWindowsChecks.Run();
+            WorkspaceWindowsChecks.Run();
             Console.WriteLine("Output routing regression checks passed.");
             return 0;
         }

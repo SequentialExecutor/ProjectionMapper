@@ -81,6 +81,14 @@ jobs:
       - name: Verify output routing regressions
         run: dotnet run --project tests/OutputRouting.Regression/OutputRouting.Regression.csproj --configuration Release
 
+      - name: Upload workspace previews
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ui-previews
+          path: artifacts/ui-previews/*.png
+          if-no-files-found: warn
+
       - name: Run tests if present
         shell: pwsh
         run: |
