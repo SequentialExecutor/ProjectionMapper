@@ -1,4 +1,4 @@
-﻿<Window x:Class="ProjectionMapper.MainWindow"
+<Window x:Class="ProjectionMapper.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:ProjectionMapper.Views"
@@ -32,7 +32,7 @@
     <DockPanel>
         <!-- Menu -->
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_File">
+            <MenuItem x:Name="PART_FileMenu" Header="_File">
                 <MenuItem Header="_New" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N" />
                 <Separator />
                 <MenuItem Header="_Open..." Command="{Binding LoadProjectCommand}" InputGestureText="Ctrl+O" />
@@ -41,11 +41,11 @@
                 <Separator />
                 <MenuItem Header="E_xit" Click="ExitMenuItem_Click" />
             </MenuItem>
-            <MenuItem Header="_Edit">
+            <MenuItem x:Name="PART_EditMenu" Header="_Edit">
                 <MenuItem Header="_Undo" Command="{Binding UndoCommand}" InputGestureText="Ctrl+Z" />
                 <MenuItem Header="_Redo" Command="{Binding RedoCommand}" InputGestureText="Ctrl+Y" />
             </MenuItem>
-            <MenuItem Header="_Playlist">
+            <MenuItem x:Name="PART_PlaylistMenu" Header="_Playlist">
                 <MenuItem Header="Create Group" Command="{Binding CreateGroupCommand}" />
                 <MenuItem Header="Delete Group" Command="{Binding DeleteGroupCommand}" />
                 <Separator />
@@ -64,7 +64,17 @@
 
         <!-- Tool bar -->
         <ToolBarTray DockPanel.Dock="Top" IsLocked="False">
-            <ToolBar>
+            <ToolBar Band="0" BandIndex="0">
+                <ToggleButton x:Name="PART_Performance" Content="Performance mode (F10)" Checked="Performance_Changed" Unchecked="Performance_Changed" />
+                <Button x:Name="PART_Blackout" Content="BLACKOUT (F12)" Click="Blackout_Click" Background="DarkRed" Foreground="White" />
+                <Button x:Name="PART_Go" Content="Go / next cue (Space in performance mode)" Click="Go_Click" />
+                <Button Content="Play / pause" Command="{Binding PlayPauseCommand}" />
+                <Button Content="Save" Command="{Binding SaveProjectCommand}" />
+                <Button x:Name="PART_CueSettings" Content="Cue settings…" Click="CueControls_Click" />
+                <Button x:Name="PART_OutputSettings" Content="Projector color / blend…" Click="OutputControls_Click" />
+            </ToolBar>
+            <ToolBar x:Name="PART_EditToolbar" Band="1" BandIndex="0">
+                <Button Content="Surface mask / curved mesh…" Click="SurfaceControls_Click" />
                 <Button Content="AI artwork…" Click="OpenArtwork_Click" ToolTip="Generate, download, preview and retain artwork with provider API tokens" />
                 <Separator />
                 <Button Content="Photo to map…" Click="OpenPhotoMap_Click" ToolTip="Import a scene reference and review AI-assisted or manually drawn surfaces" />
@@ -112,8 +122,14 @@
             <TextBlock Text="{Binding MeshSelectionText}" Foreground="DodgerBlue" />
         </StatusBar>
 
+        <Border DockPanel.Dock="Bottom" Background="#18202A" Padding="10" Margin="0,4">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock x:Name="PART_CurrentCue" Foreground="White" FontWeight="Bold" FontSize="16" /><TextBlock x:Name="PART_NextCue" Foreground="LightSkyBlue" Margin="0,5" /><TextBlock x:Name="PART_NextCueNote" Foreground="White" FontSize="11" /></StackPanel>
+                <Image x:Name="PART_NextCueImage" Grid.Column="1" Height="78" Stretch="Uniform" />
+            </Grid>
+        </Border>
         <!-- Main content: left panel (unified project tree + properties), center (input/output split horizontal) -->
-        <Grid>
+        <Grid x:Name="PART_EditorContent">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="300" MinWidth="220" MaxWidth="600" />
                 <ColumnDefinition Width="Auto" />

@@ -18,7 +18,7 @@ using System.Diagnostics;
 
 namespace ProjectionMapper.Rendering
 {
-    public sealed class SoftwareRenderer : IRenderer
+    public sealed partial class SoftwareRenderer : IRenderer
     {
         private int _width;
         private int _height;
@@ -44,6 +44,7 @@ namespace ProjectionMapper.Rendering
         {
             _initialized = false;
             _layers.Clear();
+            _surfaceStates.Clear();
         }
 
         /// <summary>
@@ -54,6 +55,7 @@ namespace ProjectionMapper.Rendering
             if (!string.IsNullOrEmpty(layerId))
             {
                 _layers.TryRemove(layerId, out _);
+                _surfaceStates.TryRemove(layerId, out _);
             }
         }
 
@@ -63,6 +65,7 @@ namespace ProjectionMapper.Rendering
         public void ClearAllLayers()
         {
             _layers.Clear();
+            _surfaceStates.Clear();
         }
 
         public Task InitializeAsync(int width, int height, CancellationToken token = default)
@@ -204,6 +207,7 @@ namespace ProjectionMapper.Rendering
 
                     try
                     {
+                        if (_surfaceStates.TryGetValue(kv.Key, out var surface)) frame = surface.Process(frame);
                         BitmapSource compositeBitmap = frame;
                         Rect compositeDest = entry.DestRect;
 
@@ -299,6 +303,8 @@ namespace ProjectionMapper.Rendering
                     try { rtb.Freeze(); } catch { }
                 }
 
+                var presented = CorrectOutput(rtb);
+
 // Phase 3: Marshal FrameReady to the UI thread — outside the lock so we do not
 // hold the render lock during Dispatcher work.
                 try
@@ -308,13 +314,13 @@ namespace ProjectionMapper.Rendering
                     {
                         app.Dispatcher.BeginInvoke(() =>
                         {
-                            try { FrameReady?.Invoke(rtb); }
+                            try { FrameReady?.Invoke(presented); }
                             catch (Exception ex) { Debug.WriteLine($"SoftwareRenderer.FrameReady event failed: {ex}"); }
                         });
                     }
                     else
                     {
-                        FrameReady?.Invoke(rtb);
+                        FrameReady?.Invoke(presented);
                     }
                 }
                 catch (Exception ex)

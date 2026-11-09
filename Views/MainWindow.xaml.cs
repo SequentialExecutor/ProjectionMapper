@@ -117,6 +117,7 @@ namespace ProjectionMapper
                 
                 // Create PlaylistService for group-based playback
                 _playlistService = new PlaylistService(_videoService);
+                InitializeArtistControls();
                 UpdateLoopingMode(_vm.IsPlaylistMode);
                 
                 // Expose VideoService so MeshEditorControl can subscribe for isolated previews
@@ -1642,7 +1643,7 @@ namespace ProjectionMapper
                 }
                 _recovery.Start(TimeSpan.FromSeconds(seconds), async () =>
                     await Dispatcher.InvokeAsync(() =>
-                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0 || _vm.ActiveProject?.PhotoMaps.Count > 0 || _vm.ActiveProject?.ArtworkAssets.Count > 0)
+                        !_closingInProgress && !_loadingProject && (_vm.ImportedVideos.Count > 0 || _vm.ActiveProject?.Surfaces.Count > 0 || _vm.ActiveProject?.PhotoMaps.Count > 0 || _vm.ActiveProject?.ArtworkAssets.Count > 0 || _vm.ActiveProject?.OutputAppearances.Count > 0)
                             ? BuildProjectModel() : null),
                     error => Dispatcher.BeginInvoke(() => _vm.StatusText = $"Recovery snapshot failed: {error}"));
             }
@@ -1746,12 +1747,15 @@ namespace ProjectionMapper
                     () => { AssertSession(); return _vm.ActiveProject?.ArtworkAssets.Select(a => a.Copy()).ToList() ?? new(); },
                     async (asset, bindings, seconds) =>
                     {
-                        AssertSession(); ArtworkRules.ValidateAsset(asset);
+                        AssertSession();
+                        if (_rendererManager.IsPerformanceMode) throw new InvalidOperationException("Exit performance mode before changing the project library or assignments.");
+                        ArtworkRules.ValidateAsset(asset);
                         var meshes = ArtworkMeshes().ToDictionary(m => m.Id!);
                         if (bindings.Any(b => !meshes.ContainsKey(b.MeshId))) throw new InvalidOperationException("A selected surface was removed. Refresh the surface list before applying.");
                         var prepared = new Dictionary<string, BitmapSource>();
                         foreach (var binding in bindings) prepared[binding.MeshId] = await ArtworkCropAsync(asset, binding.Region);
                         AssertSession();
+                        if (_rendererManager.IsPerformanceMode) throw new InvalidOperationException("Exit performance mode before accepting artwork.");
                         meshes = ArtworkMeshes().ToDictionary(m => m.Id!);
                         if (bindings.Any(b => !meshes.ContainsKey(b.MeshId))) throw new InvalidOperationException("A selected surface was removed while preparing artwork.");
                         _vm.ActiveProject ??= new ProjectModel();
@@ -1797,6 +1801,7 @@ namespace ProjectionMapper
                         var prepared = new Dictionary<string, BitmapSource>();
                         foreach (var binding in bindings) prepared[binding.MeshId] = await ArtworkCropAsync(asset, binding.Region);
                         AssertSession();
+                        if (_rendererManager.IsPerformanceMode) throw new InvalidOperationException("Exit performance mode before changing artwork previews.");
                         if (generation != _artworkPreviewGeneration) return;
                         var live = ArtworkMeshes().Select(m => m.Id).ToHashSet();
                         if (bindings.Any(b => !live.Contains(b.MeshId))) throw new InvalidOperationException("A preview surface was removed. Refresh the surface list.");
@@ -1951,8 +1956,9 @@ namespace ProjectionMapper
                     Name = _vm.ActiveProject?.Name ?? "Untitled Project",
                     CreatedAt = _vm.ActiveProject?.CreatedAt ?? DateTime.UtcNow,
                     LastModified = _vm.ActiveProject?.LastModified ?? DateTime.UtcNow,
-                    ProjectVersion = 4,
+                    ProjectVersion = 5,
                     PlaylistMode = _vm.IsPlaylistMode,
+                    OutputAppearances = _vm.ActiveProject?.OutputAppearances.Select(o => o.Copy()).ToList() ?? new(),
                     ShowMeshOverlay = PART_GlobalShowMeshOverlayCheckbox.IsChecked == true,
                     ShowCoordinateGrid = _vm.ActiveProject?.ShowCoordinateGrid ?? false,
                     InputZoom = _vm.InputZoom,
@@ -1998,6 +2004,7 @@ namespace ProjectionMapper
                             // Access TargetMonitorIndex through the Model property
                             TargetMonitorIndex = mesh.Model.TargetMonitorIndex,
                             IsLocked = mesh.IsLocked,
+                            Appearance = mesh.Model.Appearance.Copy(),
                             ArtworkAssetId = mesh.ArtworkAssetId,
                             ArtworkRegion = mesh.Model.ArtworkRegion,
                             PhotoSurfaceId = mesh.Model.PhotoSurfaceId,
@@ -2083,6 +2090,7 @@ namespace ProjectionMapper
                 _vm.UndoRedoService.Clear();
 
                 // Clear playlist groups
+                _rendererManager.ClearArtistSettings();
                 _vm.PlaylistGroups.Clear();
 
                 // Reset playlist mode
@@ -2117,6 +2125,7 @@ namespace ProjectionMapper
                 // Cache source frames during loading without flashing inactive artwork/video groups.
                 if (project.PlaylistMode) _videoService.EnablePlaylistMode();
                 else _videoService.DisablePlaylistMode();
+                ApplySavedOutputAppearances(project);
                 _vm.InputZoom = project.InputZoom;
                 _vm.OutputZoom = project.OutputZoom;
 
@@ -2159,6 +2168,7 @@ namespace ProjectionMapper
                             Visible = meshData.Visible,
                             TargetMonitorIndex = meshData.TargetMonitorIndex,
                             IsLocked = meshData.IsLocked,
+                            Appearance = meshData.Appearance.Copy(),
                             ArtworkAssetId = meshData.ArtworkAssetId,
                             ArtworkRegion = meshData.ArtworkRegion,
                             PhotoSurfaceId = meshData.PhotoSurfaceId,

@@ -1,7 +1,7 @@
 # ProjectionMapper development roadmap
 
-Status: proposed for owner review; implementation has not been authorized by this document.
-Date: November 6, 2026.
+Status: implementation delivered through Milestone 6; hardware/live-account acceptance remains open. Milestone 7 and later work remain planned.
+Updated: November 9, 2026.
 
 ## Product goal
 
@@ -174,9 +174,11 @@ Dependency: Milestone 2 and the coordinate/rendering contract from Milestone 3. 
 
 ## Milestone 6 — Artist controls and live operation
 
+Implementation delivered: see [Artist controls](ARTIST-CONTROLS.md) for surface masks, subdivided grids, cues, visual fades, performance locking, blackout, output correction, blending, tests and physical acceptance steps.
+
 Goal: shape light accurately and operate an installation confidently.
 
-Deliver independently:
+Delivered in the software rendering path (physical acceptance pending):
 - Polygon masks with feathering; then subdivided meshes with editable control points.
 - Named cues extending playlist groups, manual Go, timed advancement, fades, and next-cue preview.
 - Performance mode with editing lock and immediate blackout across outputs.

@@ -55,6 +55,10 @@ namespace ProjectionMapper.Models
         /// Sequential: videos play one after another (traditional playlist).
         /// Default is Sequential for traditional playlist behavior.
         /// </summary>
+        public CueAdvanceMode AdvanceMode { get; set; } = CueAdvanceMode.MediaEnd;
+        public double HoldSeconds { get; set; } = 30;
+        public double FadeSeconds { get; set; }
+
         public GroupPlaybackMode PlaybackMode { get; set; } = GroupPlaybackMode.Sequential;
     }
 }

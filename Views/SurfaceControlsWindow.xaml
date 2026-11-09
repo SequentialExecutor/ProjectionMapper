@@ -1,0 +1,30 @@
+<Window x:Class="ProjectionMapper.Views.SurfaceControlsWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Surface mask and curved mesh" Width="930" Height="680" WindowStartupLocation="CenterOwner">
+ <DockPanel Margin="14">
+  <StackPanel DockPanel.Dock="Bottom">
+   <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="DarkRed" Margin="0,8" />
+   <WrapPanel HorizontalAlignment="Right"><Button Content="Preview on outputs" Click="Preview_Click" Padding="10,5" Margin="4" /><Button Content="Apply" Click="Apply_Click" Padding="14,5" Margin="4" /><Button Content="Cancel" IsCancel="True" Padding="14,5" Margin="4" /></WrapPanel>
+  </StackPanel>
+  <StackPanel DockPanel.Dock="Right" Width="250" Margin="16,0,0,0">
+   <TextBlock Text="Mask" FontSize="18" FontWeight="Bold" />
+   <TextBlock Text="Click Draw mask, then click perimeter vertices. Finish to close it. Drag a vertex to adjust it." TextWrapping="Wrap" Margin="0,6" />
+   <WrapPanel><Button Content="Draw mask" Click="Draw_Click" Margin="0,0,6,0" /><Button Content="Finish" Click="Finish_Click" /><Button Content="Clear mask" Click="ClearMask_Click" Margin="6,0" /></WrapPanel>
+   <TextBlock Text="Inward feather (% of shorter side)" Margin="0,10,0,0" />
+   <Slider x:Name="Feather" Minimum="0" Maximum="25" TickFrequency="1" ValueChanged="Feather_Changed" /><TextBlock x:Name="FeatherValue" />
+   <TextBlock Text="Curved-surface grid" FontSize="18" FontWeight="Bold" Margin="0,20,0,0" />
+   <TextBlock Text="Choose cells per axis and initialize. Drag grid nodes to bend the texture within the calibrated quad. Folded cells are rejected." TextWrapping="Wrap" Margin="0,6" />
+   <WrapPanel><ComboBox x:Name="Cells" Width="50" SelectedIndex="1"><ComboBoxItem Content="2" /><ComboBoxItem Content="3" /><ComboBoxItem Content="4" /><ComboBoxItem Content="6" /><ComboBoxItem Content="8" /></ComboBox><Button Content="Initialize grid" Click="Grid_Click" Margin="6,0" /></WrapPanel>
+   <Button Content="Disable grid" Click="ClearGrid_Click" HorizontalAlignment="Left" Margin="0,6" />
+   <CheckBox x:Name="EditGrid" Content="Drag grid nodes" Checked="Mode_Changed" Unchecked="Mode_Changed" Margin="0,8" />
+   <Separator Margin="0,10" />
+   <TextBlock Text="Selected vertex (normalized 0–1)" />
+   <WrapPanel Margin="0,6"><TextBox x:Name="VertexX" Width="75" /><TextBox x:Name="VertexY" Width="75" Margin="6,0" /><Button Content="Set" Click="SetVertex_Click" /></WrapPanel>
+   <Button Content="Delete selected mask vertex" Click="DeleteVertex_Click" HorizontalAlignment="Left" />
+   <Button Content="Undo draft edit" Click="Undo_Click" HorizontalAlignment="Left" Margin="0,10" />
+   <TextBlock Text="Main Undo/Redo restores applied surface settings. Calibration corners and video crop stay unchanged." TextWrapping="Wrap" FontSize="11" />
+  </StackPanel>
+  <Viewbox Stretch="Uniform"><Grid Width="560" Height="420" Background="#20242A">
+   <Image x:Name="Reference" Stretch="Fill" Opacity="0.65" />
+   <Canvas x:Name="Editor" Background="Transparent" MouseLeftButtonDown="Editor_Down" MouseMove="Editor_Move" MouseLeftButtonUp="Editor_Up" />
+  </Grid></Viewbox>
+ </DockPanel>
+</Window>

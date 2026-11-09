@@ -60,7 +60,7 @@ namespace ProjectionMapper.Services
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, _jsonOptions), _jsonOptions)
                     ?? throw new InvalidDataException("Project snapshot is empty.");
                 Validate(snapshot);
-                snapshot.ProjectVersion = 4;
+                snapshot.ProjectVersion = 5;
                 snapshot.LastModified = DateTime.UtcNow;
                 ResolvePaths(snapshot, directory, relative: true);
                 Directory.CreateDirectory(directory);
@@ -125,7 +125,7 @@ namespace ProjectionMapper.Services
 
         private static void Validate(ProjectModel project)
         {
-            if (project.ProjectVersion < 1 || project.ProjectVersion > 4)
+            if (project.ProjectVersion < 1 || project.ProjectVersion > 5)
                 throw new InvalidDataException($"Project version {project.ProjectVersion} is unsupported. Use a compatible version of ProjectionMapper.");
             if (project.ImportedVideos == null || project.PlaylistGroups == null || project.Surfaces == null)
                 throw new InvalidDataException("Project collections cannot be null.");
@@ -147,6 +147,14 @@ namespace ProjectionMapper.Services
                 if (asset == null || !artworkIds.Add(asset.Id)) throw new InvalidDataException("Artwork assets need unique IDs.");
                 ArtworkRules.ValidateAsset(asset);
             }
+            if (project.OutputAppearances == null || project.OutputAppearances.Count > 32) throw new InvalidDataException("Output corrections are invalid.");
+            var outputIds = new System.Collections.Generic.HashSet<string>();
+            foreach (var output in project.OutputAppearances)
+            {
+                ArtistRules.Validate(output);
+                if (!outputIds.Add(output.DisplayName)) throw new InvalidDataException("Output corrections must have unique display identities.");
+            }
+            foreach (var cue in project.PlaylistGroups) ArtistRules.Validate(cue);
             var renderIds = new System.Collections.Generic.HashSet<string>();
             foreach (var video in project.ImportedVideos)
             {
@@ -158,6 +166,7 @@ namespace ProjectionMapper.Services
                 {
                     if (mesh == null || string.IsNullOrWhiteSpace(mesh.Id) || !renderIds.Add(mesh.Id))
                         throw new InvalidDataException("Sources and meshes must have distinct, nonempty IDs.");
+                    ArtistRules.Validate(mesh.Appearance);
                     if (mesh.ArtworkAssetId != null)
                     {
                         if (!artworkIds.Contains(mesh.ArtworkAssetId)) throw new InvalidDataException("An artwork assignment references a missing library image.");

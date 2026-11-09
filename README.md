@@ -11,3 +11,7 @@ The program icon was generated in Gemini. The project uses FFmpeg for video deco
 The entire program has been 100% built using CoPilot+ AI agents. Any changes I've actually made to code was to either add or remove a UI element that the AI agents weren't doing and it was simpler to just manually do it. There are for sure bugs in the current code and the audio doesn't work whatsoever (video starts glitching uncontrollably and whatnot). That's something I'll have AI fix, but it's not critical.
 
 The program currently compiles and runs, allowing you to send video output to two different connected screens/projectors. I've been testing with a physical connection via HDMI _and_ wirelessly (WiFi) to two very cheap projectors, and it works fine in short tests.
+
+### Artist controls and live operation
+
+Use **Surface mask / curved mesh…** for polygon masks, inward feathering and subdivided texture grids. **Cue settings…** extends playlist groups with manual/timed advancement and visual fades. **Performance mode** locks editing; **F12** blacks out all projector presentations while playback continues. **Projector color / blend…** provides independent brightness/gamma/RGB and manual overlap ramps. Settings save in project format 5. See [artist controls and acceptance checks](ToDo/ARTIST-CONTROLS.md).

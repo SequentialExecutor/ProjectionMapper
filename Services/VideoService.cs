@@ -297,7 +297,7 @@ namespace ProjectionMapper.Services
                 try
                 {
                     Debug.WriteLine($"VideoService: Video ended for layer {layerKey}");
-                    OnVideoCompleted(layerKey);
+                    if (!cts.IsCancellationRequested && _decoders.TryGetValue(layerKey, out var current) && ReferenceEquals(current.decoder, decoder) && !current.isPaused) OnVideoCompleted(layerKey);
                 }
                 catch (Exception ex)
                 {
@@ -578,6 +578,7 @@ namespace ProjectionMapper.Services
             if (mesh == null) throw new ArgumentNullException(nameof(mesh));
             if (string.IsNullOrEmpty(mesh.Id)) mesh.Id = Guid.NewGuid().ToString("N");
             _meshLayers[mesh.Id] = mesh;
+            _rendererManager.SetSurfaceAppearance(mesh.Id, mesh.Appearance);
 
             // Set mesh dimensions to renderer output size for proper full-screen mapping
             mesh.Width = _rendererManager.OutputWidth;
@@ -651,6 +652,7 @@ namespace ProjectionMapper.Services
                     try 
                     { 
                         _rendererManager.RemoveLayer(meshId);
+                    _rendererManager.ForgetSurfaceAppearance(meshId);
                         Debug.WriteLine($"VideoService.UnregisterMeshLayerAsync: Removed mesh layer {meshId} from renderer");
                     } 
                     catch (Exception ex) 
@@ -876,6 +878,7 @@ namespace ProjectionMapper.Services
             if (string.IsNullOrEmpty(layerId)) return;
             if (_stillClocks.ContainsKey(layerId)) { PauseStill(layerId); return; }
 
+            if (_decoders.TryGetValue(layerId, out var pausedEntry) && pausedEntry.isPaused) return;
             Debug.WriteLine($"VideoService.PauseLayerAsync: Attempting to pause layer {layerId}");
 
             if (!_decoders.TryGetValue(layerId, out var t))
@@ -911,7 +914,7 @@ namespace ProjectionMapper.Services
 
                 try { t.decoder?.Dispose(); } catch (Exception ex) { Debug.WriteLine($"VideoService.PauseLayerAsync: Error disposing decoder for {layerId}: {ex}"); }
 
-                _decoders[layerId] = (null, t.cts, t.model, t.lastFrame, true, currentPosition);
+                _decoders.TryUpdate(layerId, (null, t.cts, t.model, t.lastFrame, true, currentPosition), t);
 
                 Debug.WriteLine($"VideoService.PauseLayerAsync: Layer {layerId} paused successfully with position {currentPosition.TotalSeconds:F2}s");
             }
@@ -997,7 +1000,7 @@ namespace ProjectionMapper.Services
                     try
                     {
                         Debug.WriteLine($"VideoService.ResumeLayerAsync: Video ended for layer {layerId}");
-                        OnVideoCompleted(layerId);
+                        if (!cts.IsCancellationRequested && _decoders.TryGetValue(layerId, out var current) && ReferenceEquals(current.decoder, decoder) && !current.isPaused) OnVideoCompleted(layerId);
                     }
                     catch (Exception ex)
                     {
@@ -1290,6 +1293,18 @@ namespace ProjectionMapper.Services
         /// Starts playback for a group of videos using fast resume for seamless transitions.
         /// </summary>
         /// <param name="layerIds">List of layer IDs to start.</param>
+        /// <summary>Begin a cue at its first frame; resume uses a separate path and preserves position.</summary>
+        public async Task RestartGroupVideosAsync(System.Collections.Generic.List<string> ids)
+        {
+            foreach (var id in ids)
+            {
+                await PauseLayerAsync(id).ConfigureAwait(false);
+                if (_decoders.TryGetValue(id, out var entry))
+                    _decoders.TryUpdate(id, (entry.decoder, entry.cts, entry.model, entry.lastFrame, true, TimeSpan.Zero), entry);
+            }
+            await StartGroupVideosAsync(ids).ConfigureAwait(false);
+        }
+
         public async Task StartGroupVideosAsync(System.Collections.Generic.List<string> layerIds)
         {
             try
@@ -1441,7 +1456,7 @@ namespace ProjectionMapper.Services
 
                 // Mark as paused and null out the decoder reference immediately
                 // to prevent ProcessDecodedFrameOnUi from matching stale frames
-                _decoders[layerId] = (null, t.cts, t.model, t.lastFrame, true, currentPosition);
+                _decoders.TryUpdate(layerId, (null, t.cts, t.model, t.lastFrame, true, currentPosition), t);
 
                 // Dispose decoder in background with enough time for pending I/O to observe cancellation
                 if (decoderToDispose != null)
@@ -1787,7 +1802,7 @@ namespace ProjectionMapper.Services
                     try
                     {
                         Debug.WriteLine($"VideoService.FastResumeLayerAsync: Video ended for layer {layerId}");
-                        OnVideoCompleted(layerId);
+                        if (!cts.IsCancellationRequested && _decoders.TryGetValue(layerId, out var current) && ReferenceEquals(current.decoder, decoder) && !current.isPaused) OnVideoCompleted(layerId);
                     }
                     catch (Exception ex)
                     {

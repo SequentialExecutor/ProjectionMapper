@@ -1,0 +1,22 @@
+<Window x:Class="ProjectionMapper.Views.OutputControlsWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Projector color and edge blending" Width="570" Height="700" WindowStartupLocation="CenterOwner">
+ <DockPanel Margin="16">
+  <StackPanel DockPanel.Dock="Bottom"><TextBlock x:Name="Status" Foreground="DarkRed" TextWrapping="Wrap" Margin="0,8" /><WrapPanel HorizontalAlignment="Right"><Button Content="Reset this output" Click="Reset_Click" Margin="6" /><Button Content="Apply" Click="Apply_Click" Padding="14,5" Margin="6" /><Button Content="Cancel" IsCancel="True" Padding="14,5" Margin="6" /></WrapPanel></StackPanel>
+  <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+   <TextBlock Text="Projector" FontWeight="Bold" /><ComboBox x:Name="Output" DisplayMemberPath="Label" SelectionChanged="Output_Changed" Margin="0,6" />
+   <TextBlock Text="Adjustments preview live on this output. Cancel restores previous settings. Saved corrections follow the Windows display device name; verify them when hardware changes." TextWrapping="Wrap" Margin="0,8" />
+   <TextBlock Text="Brightness (0–2)" /><Slider x:Name="Brightness" Minimum="0" Maximum="2" Value="1" ValueChanged="Value_Changed" />
+   <TextBlock Text="Gamma (0.1–4)" /><Slider x:Name="Gamma" Minimum="0.1" Maximum="4" Value="1" ValueChanged="Value_Changed" />
+   <TextBlock Text="Red (0–2)" /><Slider x:Name="Red" Minimum="0" Maximum="2" Value="1" ValueChanged="Value_Changed" />
+   <TextBlock Text="Green (0–2)" /><Slider x:Name="Green" Minimum="0" Maximum="2" Value="1" ValueChanged="Value_Changed" />
+   <TextBlock Text="Blue (0–2)" /><Slider x:Name="Blue" Minimum="0" Maximum="2" Value="1" ValueChanged="Value_Changed" />
+   <TextBlock Text="Overlap edges (% of output dimensions)" FontWeight="Bold" Margin="0,12" />
+   <TextBlock Text="Left (0–50%)" /><Slider x:Name="BlendLeftControl" Minimum="0" Maximum="50" ValueChanged="Value_Changed" />
+   <TextBlock Text="Right (0–50%)" /><Slider x:Name="BlendRightControl" Minimum="0" Maximum="50" ValueChanged="Value_Changed" />
+   <TextBlock Text="Top (0–50%)" /><Slider x:Name="BlendTopControl" Minimum="0" Maximum="50" ValueChanged="Value_Changed" />
+   <TextBlock Text="Bottom (0–50%)" /><Slider x:Name="BlendBottomControl" Minimum="0" Maximum="50" ValueChanged="Value_Changed" />
+   <TextBlock Text="Blend power (0.1–4; 1 gives complementary linear ramps)" /><Slider x:Name="Power" Minimum="0.1" Maximum="4" Value="1" ValueChanged="Value_Changed" />
+   <TextBlock x:Name="Values" TextWrapping="Wrap" Margin="0,10" />
+   <TextBlock Text="Align identical overlapping content first, then match opposing edge widths. These controls use an approximate display gamma of 2.2 for light blending. Physical projector black levels and room conditions still limit overlap quality. The combined editor preview is uncorrected; judge correction on the projector outputs." TextWrapping="Wrap" FontSize="12" />
+  </StackPanel></ScrollViewer>
+ </DockPanel>
+</Window>

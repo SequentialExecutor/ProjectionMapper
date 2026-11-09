@@ -17,9 +17,9 @@ namespace ProjectionMapper.Models
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references; Version 4 = portable artwork assets and assignments.
+        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references; Version 4 = portable artwork assets and assignments; Version 5 = artist controls and cues.
         /// </summary>
-        public int ProjectVersion { get; set; } = 4;
+        public int ProjectVersion { get; set; } = 5;
 
         // Make surfaces observable for UI binding
         [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
@@ -46,6 +46,8 @@ namespace ProjectionMapper.Models
         public List<ArtworkAsset> ArtworkAssets { get; set; } = new();
         public string ArtworkStyle { get; set; } = string.Empty;
         public string ArtworkPalette { get; set; } = string.Empty;
+
+        public List<OutputAppearance> OutputAppearances { get; set; } = new();
 
         // Global project settings
         public bool ShowMeshOverlay { get; set; } = true;
@@ -88,6 +90,7 @@ namespace ProjectionMapper.Models
         public int TargetMonitorIndex { get; set; } = -1;
         public bool ShowOverlay { get; set; } = true;
         public bool IsLocked { get; set; }
+        public SurfaceAppearance Appearance { get; set; } = new();
         public string? ArtworkAssetId { get; set; }
         public ArtworkRegion ArtworkRegion { get; set; } = ArtworkRegion.Full;
         public string? PhotoSurfaceId { get; set; }

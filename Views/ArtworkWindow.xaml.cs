@@ -32,7 +32,7 @@ namespace ProjectionMapper.Views
         private readonly List<ArtworkAsset> _drafts = new();
         private ArtworkProvider? _previousProvider;
         private CancellationTokenSource? _cancellation;
-        private bool _ready, _busy, _closeAfterCancel;
+        private bool _ready, _busy, _closeAfterCancel, _editingLocked;
         private TaskCompletionSource<bool>? _idle;
         private ArtworkAsset? Selected => Images.SelectedItem as ArtworkAsset;
         private ArtworkProvider SelectedProvider => Provider.SelectedItem is ArtworkProviderOption option ? option.Provider : ArtworkProvider.OpenAI;
@@ -59,13 +59,18 @@ namespace ProjectionMapper.Views
                 Token.Password = string.Empty; _sessionTokens.Clear(); _http.Dispose();
             };
         }
+        public void SetEditingLocked(bool locked)
+        {
+            _editingLocked = locked;
+            Apply.IsEnabled = Keep.IsEnabled = Preview.IsEnabled = !_busy && !locked;
+        }
         private void Busy(bool busy)
         {
             _busy = busy;
             if (busy) _idle = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             else _idle?.TrySetResult(true);
             RequestFields.IsEnabled = !busy; CancelRequest.IsEnabled = busy && _cancellation != null;
-            Apply.IsEnabled = Keep.IsEnabled = Preview.IsEnabled = !busy;
+            Apply.IsEnabled = Keep.IsEnabled = Preview.IsEnabled = !busy && !_editingLocked;
         }
         public async Task StopAndCloseAsync()
         {
@@ -219,7 +224,7 @@ namespace ProjectionMapper.Views
         }
         private async Task SaveChoice(bool assign)
         {
-            if (_busy || Selected == null) return;
+            if (_busy || _editingLocked || Selected == null) return;
             var asset = Selected; Busy(true);
             try
             {
@@ -237,7 +242,7 @@ namespace ProjectionMapper.Views
         private async void Keep_Click(object sender, RoutedEventArgs e) => await SaveChoice(false);
         private async void Preview_Click(object sender, RoutedEventArgs e)
         {
-            if (_busy || Selected == null) return;
+            if (_busy || _editingLocked || Selected == null) return;
             Busy(true);
             try { await _preview(Selected, Bindings(Selected)); Status.Text = "Temporary artwork preview on assigned outputs. Restore preview or close this window to return to saved content."; }
             catch (Exception ex) { Status.Text = ex.Message; }

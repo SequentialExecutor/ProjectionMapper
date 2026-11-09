@@ -18,7 +18,7 @@ using System.Windows.Media.Imaging;
 
 namespace ProjectionMapper.Rendering
 {
-    public sealed class RendererManager : IDisposable
+    public sealed partial class RendererManager : IDisposable
     {
         private readonly IRenderer _renderer;
         private readonly ConcurrentDictionary<string, BitmapSource> _artwork = new();
@@ -73,6 +73,7 @@ namespace ProjectionMapper.Rendering
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _renderer.FrameReady += OnFrameReady;
+            if (_renderer is SoftwareRenderer software) software.LiveState = _liveState;
             ShowMeshOverlay = true; // enabled by default
         }
 
@@ -264,7 +265,7 @@ namespace ProjectionMapper.Rendering
                 }
                 else
                 {
-                    InvokeOnUi(() => _host.SetFrame(bmp));
+                    InvokeOnUi(() => _host.SetFrame(_blackout ? Black : bmp));
                 }
             }
 
@@ -297,7 +298,7 @@ namespace ProjectionMapper.Rendering
                 {
                     InvokeOnUi(() =>
                     {
-                        var visible = _calibrationPatterns.TryGetValue(monitorIndex, out var pattern) ? pattern : bmp;
+                        var visible = ResolveMonitorPresentation(monitorIndex, bmp);
                         if (visible == null) win.HostControl?.Clear();
                         else win.HostControl?.SetFrame(visible);
                     });
@@ -332,7 +333,7 @@ namespace ProjectionMapper.Rendering
                 {
                     if (_fullscreenWindows.TryGetValue(monitorIndex.Value, out var win) && win != null)
                     {
-                        InvokeOnUi(() => win.HostControl.SetMeshOverlay(quadPoints, showPoints));
+                        InvokeOnUi(() => { if (_blackout || _performanceMode) win.HostControl.ClearOverlay(); else win.HostControl.SetMeshOverlay(quadPoints, showPoints); });
                         return;
                     }
                 }
@@ -340,7 +341,7 @@ namespace ProjectionMapper.Rendering
                 // fallback to main host
                 if (_host != null)
                 {
-                    InvokeOnUi(() => _host.SetMeshOverlay(quadPoints, showPoints));
+                    InvokeOnUi(() => { if (_blackout || _performanceMode) _host.ClearOverlay(); else _host.SetMeshOverlay(quadPoints, showPoints); });
                 }
             }
             catch (Exception ex) { Debug.WriteLine($"SetMeshOverlayForMonitor failed: {ex}"); }
@@ -450,6 +451,7 @@ namespace ProjectionMapper.Rendering
 
                     try
                     {
+                        if (_blackout || _performanceMode) { win.HostControl.ClearOverlay(); win.HostControl.ClearCompositeMeshOverlay(); return; }
                         // Fresh snapshot at dispatch time captures the current (latest) overlay state.
                         List<(Point[] QuadPoints, bool ShowPoints, string LayerId)>? overlaysCopy = null;
                         if (_monitorMeshOverlays.TryGetValue(monitorIndex, out var overlaysNow) && overlaysNow.Count > 0)
@@ -491,6 +493,7 @@ namespace ProjectionMapper.Rendering
                             // Clear existing mesh overlays first
                             _host.ClearMeshOverlay();
 
+                            if (_blackout || _performanceMode) return;
                             // Draw all overlays for main host using AddMeshOverlay to show multiple
                             foreach (var (quadPoints, showPoints, layerId) in _mainHostMeshOverlays)
                             {
@@ -572,6 +575,8 @@ namespace ProjectionMapper.Rendering
                     // A null submission remains a clear/hide operation (including inactive playlist groups).
                     // Artwork replaces content only; source cropping never distorts the generated texture.
                     if (frame != null && TryGetArtwork(layerId, out var artwork)) frame = artwork;
+                    RouteSurfaceStyle(layerId, _renderer);
+                    foreach (var output in _monitorRenderers.Values) RouteSurfaceStyle(layerId, output);
                     // Get target monitor size for coordinate scaling
                     int monitorW = 0, monitorH = 0;
                     if (targetMonitorIndex >= 0 && _monitorRendererSizes.TryGetValue(targetMonitorIndex, out var monSize))
@@ -771,6 +776,7 @@ namespace ProjectionMapper.Rendering
                 try
                 {
                     var monitorRenderer = new SoftwareRenderer();
+                    ConfigureArtistOutput(monitorIndex, monitorRenderer);
 
                     // Use physical dimensions for rendering - this is the native pixel count of the display
                     int renderW = (physicalWidth > 0) ? physicalWidth : (OutputWidth > 0 ? OutputWidth : 1920);
