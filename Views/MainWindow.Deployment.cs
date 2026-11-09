@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
 using Microsoft.Win32;
 using ProjectionMapper.Models;
@@ -18,6 +19,7 @@ namespace ProjectionMapper
         private OutputLayout? _approvedOutputLayout;
         private bool _outputsNeedSetup;
         private int _performanceRequest;
+        private CancellationTokenSource? _performanceCancellation;
         private DeploymentWindow? _deploymentWindow;
         private RehearsalRecorder? _rehearsalRecorder;
         private RehearsalReport? _lastRehearsal;
@@ -131,17 +133,18 @@ namespace ProjectionMapper
         }
         private async Task CloseDeploymentAsync()
         {
+            _performanceCancellation?.Cancel();
             string notes = _deploymentWindow?.OperatorNotes ?? string.Empty;
             if (_deploymentWindow != null) await _deploymentWindow.StopAndCloseAsync();
             _deploymentWindow = null;
             if (_rehearsalRecorder != null) await StopRehearsalAsync(notes);
         }
-        private async Task<bool> CheckBeforePerformanceAsync()
+        private async Task<bool> CheckBeforePerformanceAsync(CancellationToken token)
         {
             if (_outputsNeedSetup) { _vm.StatusText = "Review Output setup before performance."; return false; }
             var session = _projectSession; var snapshot = BuildProjectModel(); string fingerprint = ProjectFingerprint(snapshot);
             _vm.StatusText = "Running preflight before performance…";
-            var report = await new PreflightService().CheckAsync(snapshot, CaptureOutputLayout(), _currentProjectPath, inspectMedia: true, outputReviewConfirmed: !_outputsNeedSetup && DeploymentProject.SameLayout(_approvedOutputLayout, CaptureOutputLayout()));
+            var report = await new PreflightService().CheckAsync(snapshot, CaptureOutputLayout(), _currentProjectPath, inspectMedia: true, token: token, outputReviewConfirmed: !_outputsNeedSetup && DeploymentProject.SameLayout(_approvedOutputLayout, CaptureOutputLayout()));
             if (_closingInProgress || session != _projectSession || fingerprint != ProjectFingerprint(BuildProjectModel()) || _outputsNeedSetup)
             { _vm.StatusText = "The project or displays changed during preflight. Run it again."; return false; }
             if (!report.HasErrors) return true;

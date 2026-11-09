@@ -48,10 +48,14 @@ namespace ProjectionMapper
             if (_rendererManager == null) return;
             bool enabled = PART_Performance.IsChecked == true;
             int request = ++_performanceRequest;
+            _performanceCancellation?.Cancel();
             if (enabled)
             {
-                try { if (!await CheckBeforePerformanceAsync()) { if (request == _performanceRequest) PART_Performance.IsChecked = false; return; } }
+                using var cancellation = new System.Threading.CancellationTokenSource(); _performanceCancellation = cancellation;
+                try { if (!await CheckBeforePerformanceAsync(cancellation.Token)) { if (request == _performanceRequest) PART_Performance.IsChecked = false; return; } }
+                catch (OperationCanceledException) { if (request == _performanceRequest) PART_Performance.IsChecked = false; return; }
                 catch (Exception ex) { Debug.WriteLine($"Performance preflight failed: {ex}"); _vm.StatusText = ex.Message; if (request == _performanceRequest) PART_Performance.IsChecked = false; return; }
+                finally { if (ReferenceEquals(_performanceCancellation, cancellation)) _performanceCancellation = null; }
                 if (request != _performanceRequest || PART_Performance.IsChecked != true) return;
             }
             // Generation may finish while editing is locked; accepting or projecting new variants waits until unlock.

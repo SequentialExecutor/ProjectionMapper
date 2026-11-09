@@ -92,7 +92,7 @@ Run **preflight** on the destination. It checks project compatibility, readable
 media, artwork-covered missing originals, cue references, output availability and
 layout, free-space observation, FFmpeg/ffprobe execution, optional media metadata,
 and collection integrity. Entering **Performance mode** runs fresh checks and
-blocks on errors; warnings still require operator judgement. Edits or display
+blocks on errors; warnings still require operator judgement. Unchecking Performance mode cancels its pending probes. Edits or display
 changes during that check require a new check. Manual Go/play remains available
 for editing/rehearsal; performance readiness is checked at performance-mode entry.
 

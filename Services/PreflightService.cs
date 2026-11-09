@@ -83,6 +83,7 @@ namespace ProjectionMapper.Services
             if (projectPath != null && File.Exists(Path.Combine(Path.GetDirectoryName(projectPath)!, PortableProjectService.ManifestName)))
                 report.Checks.AddRange(await new PortableProjectService().VerifyAsync(Path.GetDirectoryName(projectPath)!, token, Path.GetFileName(projectPath)).ConfigureAwait(false));
             Add(CheckSeverity.Info, "acceptance.manual", "Physical alignment, color/blending, audio timing and a four-hour offline rehearsal require operator acceptance.");
+            token.ThrowIfCancellationRequested();
             return report;
         }, token);
     }
