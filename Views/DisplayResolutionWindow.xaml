@@ -1,0 +1,25 @@
+<Window Style="{DynamicResource {x:Type Window}}" x:Class="ProjectionMapper.Views.DisplayResolutionWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Display resolutions" Width="660" Height="560" MinWidth="420" MinHeight="360" WindowStartupLocation="CenterOwner">
+ <DockPanel Margin="20">
+  <StackPanel DockPanel.Dock="Top">
+   <TextBlock Text="Match each projector's resolution" Style="{StaticResource SectionTitle}" />
+   <Border x:Name="Confirmation" Visibility="Collapsed" Style="{StaticResource PanelCard}" Margin="0,0,0,12">
+    <StackPanel><TextBlock x:Name="Countdown" TextWrapping="Wrap" FontWeight="SemiBold" />
+     <WrapPanel Margin="0,8,0,0"><Button x:Name="Keep" Content="Keep resolution" Style="{StaticResource PrimaryButton}" Click="Keep_Click" Margin="0,0,8,0" /><Button x:Name="Revert" Content="Revert now" Click="Revert_Click" /></WrapPanel>
+    </StackPanel>
+   </Border>
+  </StackPanel>
+  <StackPanel DockPanel.Dock="Bottom">
+   <TextBlock x:Name="Status" TextWrapping="Wrap" Foreground="{DynamicResource Ui.Warning}" Margin="0,10" />
+   <WrapPanel HorizontalAlignment="Right"><Button x:Name="Refresh" Content="Refresh displays" Click="Refresh_Click" Margin="0,0,8,0" /><Button x:Name="Apply" Content="Try resolution" Style="{StaticResource PrimaryButton}" Click="Apply_Click" Margin="0,0,8,0" /><Button Content="Done" Click="Done_Click" /></WrapPanel>
+  </StackPanel>
+  <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+   <TextBlock Text="Display" Style="{StaticResource MutedText}" /><ComboBox x:Name="Displays" DisplayMemberPath="Label" SelectionChanged="Display_Changed" Margin="0,5,0,12" />
+   <TextBlock x:Name="CurrentMode" TextWrapping="Wrap" Margin="0,0,0,12" />
+   <TextBlock Text="Resolution and refresh rate" Style="{StaticResource MutedText}" /><ComboBox x:Name="Modes" DisplayMemberPath="Label" Margin="0,5,0,12" />
+   <TextBlock Text="Only modes reported by this display's Windows driver are listed. Choose another display to set its resolution independently." TextWrapping="Wrap" Style="{StaticResource MutedText}" />
+   <TextBlock Text="Try a mode, then keep it within 15 seconds. Otherwise the previous mode is restored. Keeping a mode saves it in Windows. After a change, review projector assignments and alignment before restoring output with F12." TextWrapping="Wrap" Margin="0,12" />
+  </StackPanel></ScrollViewer>
+ </DockPanel>
+</Window>

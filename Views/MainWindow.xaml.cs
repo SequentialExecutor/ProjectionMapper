@@ -67,7 +67,7 @@ namespace ProjectionMapper
 
         /// <summary>
         /// Stores both physical (native resolution) and virtual (DPI-scaled) monitor dimensions.
-        /// PhysicalWidth/Height = the actual pixel count of the display
+        /// PhysicalWidth/Height = the active Windows display-mode pixel dimensions
         /// Width/Height/Left/Top = the virtual screen coordinates (used for window positioning)
         /// </summary>
         private record MonitorInfo(int Width, int Height, int Left, int Top, int PhysicalWidth, int PhysicalHeight);
@@ -1108,6 +1108,11 @@ namespace ProjectionMapper
                         Debug.WriteLine($"MainWindow: ShowMonitorWindow fallback show failed: {ex2}");
                     }
                 }
+                // A new output renderer has no retained layers. Re-submit cached content even if
+                // playback is paused; VideoService still filters out inactive playlist sources.
+                if (_activeMonitorWindows.ContainsKey(monitorIndex))
+                    foreach (var mesh in _vm.ImportedVideos.SelectMany(video => video.MeshLayers).Where(mesh => mesh.TargetMonitorIndex == monitorIndex))
+                        if (mesh.Id != null) _videoService.RefreshMeshLayerRendering(mesh.Id);
             }
             catch (Exception ex)
             {
@@ -1298,42 +1303,6 @@ namespace ProjectionMapper
             }
         }
 
-        // P/Invoke helpers to query physical display mode (to avoid DPI scaling artifacts)
-        private const int ENUM_CURRENT_SETTINGS = -1;
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct DEVMODE
-        {
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
-            public short dmSpecVersion;
-            public short dmDriverVersion;
-            public short dmSize;
-            public short dmDriverExtra;
-            public int dmFields;
-
-            public int dmPositionX;
-            public int dmPositionY;
-            public int dmDisplayOrientation;
-            public int dmDisplayFixedOutput;
-
-            public short dmColor;
-            public short dmDuplex;
-            public short dmYResolution;
-            public short dmTTOption;
-            public short dmCollate;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
-            public short dmLogPixels;
-            public int dmBitsPerPel;
-            public int dmPelsWidth;
-            public int dmPelsHeight;
-            public int dmDisplayFlags;
-            public int dmDisplayFrequency;
-            // remaining fields omitted
-        }
-
-        [DllImport("user32.dll", CharSet = CharSet.Ansi)]
-        private static extern bool EnumDisplaySettings(string lpszDeviceName, int iModeNum, ref DEVMODE lpDevMode);
-
         // Additional P/Invoke for reliable monitor enumeration
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
@@ -1422,65 +1391,28 @@ namespace ProjectionMapper
                 {
                     var (hMonitor, bounds, deviceName, isPrimary) = monitorList[i];
 
-                    // EnumDisplayMonitors returns the virtual screen coordinates (DPI-scaled)
-                    // These are used for window positioning with SetWindowPos
+                    // Preserve the desktop bounds for native window placement. In a per-monitor-DPI-aware
+                    // process these are screen pixels; they are not a substitute for the active mode.
                     int virtualW = bounds.Right - bounds.Left;
                     int virtualH = bounds.Bottom - bounds.Top;
                     int virtualLeft = bounds.Left;
                     int virtualTop = bounds.Top;
 
-                    // Physical dimensions default to virtual (will be updated if DPI scaling detected)
+                    // Fall back to desktop bounds only when Windows cannot report an active mode.
                     int physicalW = virtualW;
                     int physicalH = virtualH;
-                    int logicalW = virtualW;
-                    int logicalH = virtualH;
 
                     try
                     {
-                        // Query current display mode to get the actual physical resolution
-                        var dm = new DEVMODE();
-                        dm.dmDeviceName = new string('\0', 32);
-                        dm.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
-
-                        if (!string.IsNullOrEmpty(deviceName) && EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref dm))
-                        {
-                            if (dm.dmPelsWidth > 0 && dm.dmPelsHeight > 0)
-                            {
-                                logicalW = dm.dmPelsWidth;
-                                logicalH = dm.dmPelsHeight;
-
-                                // For displays with DPI scaling:
-                                // - EnumDisplayMonitors gives us virtual/scaled coordinates (e.g., 2880x1620 at 150% DPI)
-                                // - EnumDisplaySettings gives us the logical resolution (e.g., 1920x1080)
-                                //
-                                // If the display settings resolution differs from virtual bounds,
-                                // it indicates DPI scaling is in effect. In this case:
-                                // - Use virtual bounds for window positioning (SetWindowPos uses virtual coords)
-                                // - Use LARGER of the two for rendering (the physical pixel count)
-                                //
-                                // When virtual > display settings: physical = virtual (150% scaling)
-                                // When virtual == display settings: no scaling
-                                if (virtualW > dm.dmPelsWidth || virtualH > dm.dmPelsHeight)
-                                {
-                                    // DPI scaling detected: virtual bounds are larger than display settings
-                                    // The virtual bounds represent the physical pixel dimensions
-                                    physicalW = virtualW;
-                                    physicalH = virtualH;
-                                    Debug.WriteLine($"MainWindow: DPI scaling detected for '{deviceName}': physical {physicalW}x{physicalH}, logical {dm.dmPelsWidth}x{dm.dmPelsHeight}");
-                                }
-                                else
-                                {
-                                    // No scaling or display settings >= virtual - use display settings as physical
-                                    physicalW = dm.dmPelsWidth;
-                                    physicalH = dm.dmPelsHeight;
-                                }
-                                Debug.WriteLine($"MainWindow: EnumDisplaySettings for '{deviceName}': display mode {dm.dmPelsWidth}x{dm.dmPelsHeight} at ({dm.dmPositionX},{dm.dmPositionY})");
-                            }
-                        }
+                        // Windows' active pixel mode is authoritative. Taking the larger of this
+                        // and the desktop bounds can allocate the wrong surface on scaled/wireless outputs.
+                        var active = new WindowsDisplayModes().Current(deviceName);
+                        physicalW = active.Width;
+                        physicalH = active.Height;
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"MainWindow: EnumDisplaySettings failed for {deviceName}: {ex}");
+                        Debug.WriteLine($"MainWindow: Active display mode unavailable for {deviceName}; using monitor bounds: {ex}");
                     }
 
                     // Store both virtual (for positioning) and physical (for rendering) dimensions
@@ -1488,16 +1420,7 @@ namespace ProjectionMapper
                     _detectedDisplays.Add(new DisplayDescriptor(i, deviceName, WindowsDisplayIdentity.MonitorId(deviceName), virtualLeft, virtualTop, virtualW, virtualH, physicalW, physicalH, isPrimary));
 
                     var isPrimaryStr = isPrimary ? " (Primary)" : "";
-                    // Show the logical resolution (matches Windows Display Settings) with native res if DPI-scaled
-                    string resolutionStr;
-                    if (physicalW != logicalW || physicalH != logicalH)
-                    {
-                        resolutionStr = $"{logicalW}x{logicalH} (native {physicalW}x{physicalH})";
-                    }
-                    else
-                    {
-                        resolutionStr = $"{physicalW}x{physicalH}";
-                    }
+                    string resolutionStr = $"{physicalW}x{physicalH}";
                     var monitorItem = new MonitorItem
                     {
                         Index = i,

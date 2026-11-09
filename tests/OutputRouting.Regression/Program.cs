@@ -67,6 +67,16 @@ internal static class Program
                 video.RefreshMeshLayerRendering(mesh.Id);
                 Check(!first.Has(mesh.Id) && !second.Has(mesh.Id) && !preview.Has(mesh.Id),
                     "inactive playlist refresh clears retained output without restoring cached image");
+                // A new renderer must receive cached content without restarting a paused decoder.
+                video.DisablePlaylistMode();
+                var replacement = new RecordingRenderer(); outputs[1] = replacement;
+                video.RefreshMeshLayerRendering(mesh.Id);
+                var refreshFrame = new System.Windows.Threading.DispatcherFrame();
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle,
+                    new Action(() => refreshFrame.Continue = false));
+                System.Windows.Threading.Dispatcher.PushFrame(refreshFrame);
+                Check(replacement.Has(mesh.Id) && !first.Has(mesh.Id), "cached refresh repopulates a replacement output renderer without leaking to another output");
+                outputs[1] = second; replacement.Dispose();
             }
 
             // Verify the real software renderer releases null-submitted layer entries.

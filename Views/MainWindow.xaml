@@ -80,7 +80,7 @@
                 <Menu VerticalAlignment="Center">
                     <MenuItem Header="Create"><MenuItem Header="Photo to map…" Click="OpenPhotoMap_Click" /><MenuItem Header="AI artwork library…" Click="OpenArtwork_Click" /></MenuItem>
                     <MenuItem Header="Mapping"><MenuItem Header="Manual calibration…" Click="OpenCalibration_Click" /><MenuItem Header="Camera-assisted calibration…" Click="CameraCalibration_Click" /><Separator /><MenuItem Header="Masks and curved mesh…" Click="SurfaceControls_Click" /></MenuItem>
-                    <MenuItem Header="Show setup"><MenuItem x:Name="PART_OutputSetup" Header="Assign projector outputs…" Click="OutputSetup_Click" /><MenuItem x:Name="PART_OutputSettings" Header="Projector color and blending…" Click="OutputControls_Click" /><MenuItem x:Name="PART_CueSettings" Header="Selected cue settings…" Click="CueControls_Click" /></MenuItem>
+                    <MenuItem Header="Show setup"><MenuItem Header="Display resolutions…" Click="DisplayResolutions_Click" /><MenuItem x:Name="PART_OutputSetup" Header="Assign projector outputs…" Click="OutputSetup_Click" /><MenuItem x:Name="PART_OutputSettings" Header="Projector color and blending…" Click="OutputControls_Click" /><MenuItem x:Name="PART_CueSettings" Header="Selected cue settings…" Click="CueControls_Click" /></MenuItem>
                 </Menu>
                 <TextBlock x:Name="PART_DisplaySummary" DockPanel.Dock="Right" Style="{StaticResource MutedText}" Text="Outputs not configured" VerticalAlignment="Center" Margin="12,0,4,0" />
             </DockPanel>

@@ -70,6 +70,8 @@ internal static class TutorialScreenshots
         // Enumerate the actual Windows capture machine. No projector identity or alignment is fabricated.
         typeof(MainWindow).GetMethod("EnumerateMonitors", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(main, null);
         var displays = ((IEnumerable)typeof(MainWindow).GetField("_detectedDisplays", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(main)!).Cast<DisplayDescriptor>().ToList();
+        var resolutions = new DisplayResolutionWindow(() => displays, () => throw new InvalidOperationException("Documentation capture must not change display modes."));
+        SaveWindow(resolutions, "display-resolutions", 660, 560); resolutions.Close();
         var layer = new LayerViewModel(new LayerModel { Name = "Front panel", TargetMonitorIndex = -1 });
         var calibration = new CalibrationWindow(displays.Select(d => new CalibrationOutput(d.Index, d.DeviceName, d.RenderWidth, d.RenderHeight)).ToList(),
             layer, new UndoRedoService(), (_, _) => throw new InvalidOperationException("Documentation capture must not project."), () => { }, _ => 0);

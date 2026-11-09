@@ -27,3 +27,7 @@ Use **Collect / preflight / rehearsal…** to create a verified project folder, 
 Select an unlocked planar mesh assigned to a projector and open **Camera calibration…**. Project coded markers, import their photograph, inspect/correct matches, mark the target corners, and review independent projector-pixel errors before projecting an outline and applying. Accepted photos/evidence persist in format 7 and collected projects. This local workflow requires no AI token; physical accuracy must be measured on the installation. See [camera calibration](ToDo/CAMERA-CALIBRATION.md).
 
 See the [workspace design guide](ToDo/UI-DESIGN.md) for the editor layout and appearance controls.
+
+### Display resolutions
+
+Use **Show setup > Display resolutions…** to choose a supported resolution and refresh rate for each display. Changes have a 15-second keep/revert confirmation. See [per-display resolution setup](ToDo/DISPLAY-RESOLUTIONS.md).
