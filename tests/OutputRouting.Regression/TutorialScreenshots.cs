@@ -15,6 +15,7 @@ using ProjectionMapper.Models;
 using ProjectionMapper.Services;
 using ProjectionMapper.ViewModels;
 using ProjectionMapper.Views;
+using ProjectionMapper.Rendering;
 
 /// <summary>Opt-in captures of actual WPF controls for the tutorial; never submits AI requests or projects patterns.</summary>
 internal static class TutorialScreenshots
@@ -70,6 +71,12 @@ internal static class TutorialScreenshots
         // Enumerate the actual Windows capture machine. No projector identity or alignment is fabricated.
         typeof(MainWindow).GetMethod("EnumerateMonitors", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(main, null);
         var displays = ((IEnumerable)typeof(MainWindow).GetField("_detectedDisplays", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(main)!).Cast<DisplayDescriptor>().ToList();
+        var capture = typeof(MainWindow).GetMethod("CaptureOutputDiagnostics", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var diagnostics = new OutputDiagnosticsWindow(() => (OutputDiagnosticReport)capture.Invoke(main, null)!);
+        SaveWindow(diagnostics, "output-status", 920, 730); diagnostics.Close();
+        var previewSource = new RenderHostControl(); previewSource.SetFrame(CalibrationPattern.Create(1280, 720, 1, 64));
+        var projectionPreview = new ProjectionPreviewWindow(previewSource);
+        SaveWindow(projectionPreview, "projection-preview", 1280, 720); projectionPreview.Close(); previewSource.Dispose();
         var resolutions = new DisplayResolutionWindow(() => displays, () => throw new InvalidOperationException("Documentation capture must not change display modes."));
         SaveWindow(resolutions, "display-resolutions", 660, 560); resolutions.Close();
         var layer = new LayerViewModel(new LayerModel { Name = "Front panel", TargetMonitorIndex = -1 });

@@ -31,3 +31,7 @@ See the [workspace design guide](ToDo/UI-DESIGN.md) for the editor layout and ap
 ### Display resolutions
 
 Use **Show setup > Display resolutions…** to choose a supported resolution and refresh rate for each display. Changes have a 15-second keep/revert confirmation. See [per-display resolution setup](ToDo/DISPLAY-RESOLUTIONS.md).
+
+### Preview and output verification
+
+Press **F5** for the composed editor preview; Esc returns to editing. Use **View > Output status…** for per-display routing, resolution and frame observations, suggested checks, and JSON export. See [output verification](ToDo/OUTPUT-VERIFICATION.md).

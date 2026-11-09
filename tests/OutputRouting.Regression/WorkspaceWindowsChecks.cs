@@ -66,6 +66,7 @@ internal static class WorkspaceWindowsChecks
         }
         UiThemeService.SetAppearance(UiAppearance.Dark, persist: false);
         DisplayModeWindowsChecks.Run(window);
+        OutputVerificationWindowsChecks.Run(window);
         if (Environment.GetEnvironmentVariable("PROJECTIONMAPPER_CAPTURE_TUTORIAL") == "1") TutorialScreenshots.Capture(window);
         Console.WriteLine("Workspace layout and appearance checks passed; actual WPF previews saved.");
     }

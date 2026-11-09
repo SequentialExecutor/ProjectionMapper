@@ -245,7 +245,9 @@ Treat the collection as a transfer snapshot. To edit an opened collection, save 
 | Photo-created mesh does not align | Photo outlines are starting geometry. Assign and calibrate the projector. |
 | Camera marker imaging will not load | Keep the full application package together; check the Microsoft Visual C++ 2015–2022 x64 redistributable. |
 
-**View > Preview / F5** is currently a placeholder. Use the Projection editor and assigned projector outputs for the working preview workflow.
+Use **View > Preview / F5** for a fullscreen view of the composed editor frame on the editor's display. Press **Esc** or **F5** to close it. The image preserves its aspect ratio, and closing leaves playback and projector assignments intact. Projector color/blending is evaluated on physical outputs.
+
+For an empty or unexpected output, open **View > Output status…**. Select a display to inspect its routes, current cue activity, cached content, Windows/render dimensions, and recent software frame events. The findings distinguish blackout, output review, missing content, closed windows, and resolution mismatch. **Export diagnostic JSON…** saves a report for troubleshooting. See [output verification](../ToDo/OUTPUT-VERIFICATION.md).
 
 ## Keyboard reference
 

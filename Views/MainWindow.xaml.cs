@@ -429,18 +429,7 @@ namespace ProjectionMapper
             }
         }
 
-        private void OnPreviewRequested()
-        {
-            try
-            {
-                Debug.WriteLine("MainWindow: Preview requested - feature not yet implemented");
-                MessageBox.Show("Full-screen preview feature coming soon!", "Preview", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"MainWindow: Preview failed: {ex}");
-            }
-        }
+        private void OnPreviewRequested() => OpenProjectionPreview();
 
         private async void OnDeleteImportedRequested(ImportedVideoViewModel? imported)
         {

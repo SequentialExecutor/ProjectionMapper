@@ -43,6 +43,9 @@ namespace ProjectionMapper.Rendering
             _artworkPreview.Clear(); if (!previewsOnly) _artwork.Clear();
         }
         private readonly ConcurrentDictionary<int, long> _outputFrameCounts = new();
+        private readonly ConcurrentDictionary<int, DateTimeOffset> _lastOutputFramesUtc = new();
+        public long GetOutputFrameCount(int index) => _outputFrameCounts.GetValueOrDefault(index);
+        public DateTimeOffset? GetLastOutputFrameUtc(int index) => _lastOutputFramesUtc.TryGetValue(index, out var time) ? time : null;
         public List<ProjectionMapper.Models.OutputFrameObservation> ObserveOutputs() => _monitorRenderers.Keys.OrderBy(i => i).Select(i => new ProjectionMapper.Models.OutputFrameObservation(i, _outputFrameCounts.GetValueOrDefault(i), GetMonitorRenderMilliseconds(i))).ToList();
         private readonly ConcurrentDictionary<int, BitmapSource> _calibrationPatterns = new();
         private readonly ConcurrentDictionary<int, BitmapSource> _latestMonitorFrames = new();
@@ -861,7 +864,7 @@ catch (Exception ex)
                     monitorRenderer.InitializeAsync(renderW, renderH, dpiX, dpiY, CancellationToken.None).GetAwaiter().GetResult();
 
                     // Subscribe to its FrameReady event to update the fullscreen host
-                    monitorRenderer.FrameReady += (bmp) => { if (bmp != null) _outputFrameCounts.AddOrUpdate(monitorIndex, 1, (_, count) => count + 1); OnMonitorFrameReady(monitorIndex, bmp); };
+                    monitorRenderer.FrameReady += (bmp) => { if (bmp != null) { _outputFrameCounts.AddOrUpdate(monitorIndex, 1, (_, count) => count + 1); _lastOutputFramesUtc[monitorIndex] = DateTimeOffset.UtcNow; } OnMonitorFrameReady(monitorIndex, bmp); };
 
                     // Store renderer
                     _monitorRenderers[monitorIndex] = monitorRenderer;
@@ -886,6 +889,8 @@ catch (Exception ex)
                     {
                         try { window.HostControl.InitializeCompositeOverlay(logicalOverlayW, logicalOverlayH); } catch { }
                     }
+
+                    _lastOutputFramesUtc.TryRemove(monitorIndex, out _);
 
                     // Start the render loop AFTER the overlay is pre-initialized so the first frame
                     // delivery never races with the initial Source assignment.
@@ -931,6 +936,7 @@ catch (Exception ex)
                 _fullscreenWindows.Remove(monitorIndex);
                 _calibrationPatterns.TryRemove(monitorIndex, out _);
                 _latestMonitorFrames.TryRemove(monitorIndex, out _);
+                _lastOutputFramesUtc.TryRemove(monitorIndex, out _);
 
                 // Dispose associated monitor renderer and stop loop
                 if (_monitorRenderLoops.TryGetValue(monitorIndex, out var loop))

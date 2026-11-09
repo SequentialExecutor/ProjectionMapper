@@ -137,6 +137,8 @@ namespace ProjectionMapper.Services
         /// <summary>
         /// Checks if a layer is allowed to render in the current mode.
         /// </summary>
+        public bool IsSourceActiveForRendering(string layerId) => IsLayerAllowedToRender(layerId);
+
         private bool IsLayerAllowedToRender(string layerId)
         {
             if (!_playlistModeActive) return true;

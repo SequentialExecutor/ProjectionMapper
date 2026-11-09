@@ -69,6 +69,7 @@
                 <MenuItem Header="Appearance"><MenuItem x:Name="PART_DarkAppearance" Header="Dark" IsCheckable="True" Click="DarkAppearance_Click" /><MenuItem x:Name="PART_LightAppearance" Header="Light" IsCheckable="True" Click="LightAppearance_Click" /><MenuItem x:Name="PART_SystemAppearance" Header="Follow Windows" IsCheckable="True" Click="SystemAppearance_Click" /></MenuItem>
                 <Separator />
                 <MenuItem Header="_Preview" Command="{Binding PreviewCommand}" InputGestureText="F5" />
+                <MenuItem Header="Output _status…" Click="OutputStatus_Click" />
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem Header="_About" Click="AboutMenuItem_Click" />

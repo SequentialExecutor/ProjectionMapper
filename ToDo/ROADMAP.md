@@ -1,6 +1,6 @@
 # ProjectionMapper development roadmap
 
-Status: implementation delivered through Milestone 7; physical, sustained-show and live-account acceptance remains open. Camera-assisted planar calibration is implemented; its real-installation acceptance and other later work remain open.
+Status: implementation delivered through Milestone 7; Milestone 8 output verification is in software verification; physical, sustained-show and live-account acceptance remains open. Camera-assisted planar calibration is implemented; its real-installation acceptance and other later work remain open.
 Updated: November 9, 2026.
 
 ## Product goal
@@ -223,6 +223,26 @@ Project known markers, photograph them, detect correspondences, estimate a trans
 Acceptance: measure alignment error on real installations against an owner-agreed pixel tolerance; reject unreliable calibration instead of silently applying it.
 
 Dependency: Milestones 3–4. Full 3D reconstruction is outside the first release.
+
+## Milestone 8 — Output verification
+
+Goal: make empty-output diagnosis practical without disrupting playback or adding permanent editor panels.
+
+Implementation: [Output verification](OUTPUT-VERIFICATION.md).
+
+Work:
+- Replace the F5 preview placeholder with a live composed-frame fullscreen view on the editor display.
+- Provide per-display routing, active/cached content, output-window, render-size and frame-event observations.
+- Explain blackout, assignment-review, inactive-cue, missing-content and resolution-mismatch conditions with specific next steps.
+- Export a detached diagnostic report without media-path fields, credentials or image payloads.
+
+Acceptance:
+- F5 opens/closes preview; Esc returns to editing without changing outputs or consuming another decoder.
+- Output status remains available during Performance mode and does not change playback or routing.
+- Reports preserve actual software observations and distinguish them from physical projector acceptance.
+- Build/regressions and captured Windows UI checks pass; mixed-DPI fullscreen behavior is checked on installation hardware.
+
+Dependency: Milestones 1–3 and 7, plus the per-display resolution work.
 
 ## Delivery and owner decision gates
 

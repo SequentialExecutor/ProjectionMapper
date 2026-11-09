@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Services/OutputDiagnosticService.cs" Link="OutputDiagnosticService.cs" />
     <Compile Include="../../Services/DeploymentProject.cs" Link="DeploymentProject.cs" />
     <Compile Include="../../Services/DeploymentSettings.cs" Link="DeploymentSettings.cs" />
     <Compile Include="../../Services/PortableProjectService.cs" Link="PortableProjectService.cs" />
