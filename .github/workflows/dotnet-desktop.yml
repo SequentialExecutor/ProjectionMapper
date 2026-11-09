@@ -79,6 +79,8 @@ jobs:
         run: dotnet run --project tests/Persistence.Regression/Persistence.Regression.csproj --configuration Release
 
       - name: Verify output routing regressions
+        env:
+          PROJECTIONMAPPER_CAPTURE_TUTORIAL: '1'
         run: dotnet run --project tests/OutputRouting.Regression/OutputRouting.Regression.csproj --configuration Release
 
       - name: Upload workspace previews
@@ -86,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.2
         with:
           name: ui-previews
-          path: artifacts/ui-previews/*.png
+          path: artifacts/ui-previews/**
           if-no-files-found: warn
 
       - name: Run tests if present
