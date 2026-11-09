@@ -99,7 +99,7 @@
       <Trigger Property="IsChecked" Value="True">
         <Setter Property="Background" Value="{DynamicResource Ui.Selection}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Ui.Accent}"/>
-        <Setter Property="Foreground" Value="{DynamicResource Ui.AccentText}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Ui.SelectionText}"/>
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -422,7 +422,7 @@
                 </Grid.ColumnDefinitions>
                 <Grid x:Name="Icon" Width="22">
                   <ContentPresenter ContentSource="Icon"/>
-                  <TextBlock x:Name="Check" Text="✓" Foreground="{DynamicResource Ui.AccentText}" Visibility="Collapsed"/>
+                  <TextBlock x:Name="Check" Text="&#10003;" Foreground="{DynamicResource Ui.AccentText}" Visibility="Collapsed"/>
                 </Grid>
                 <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
                 <TextBlock x:Name="Gesture" Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="{DynamicResource Ui.Muted}" Margin="22,0,4,0" VerticalAlignment="Center"/>
@@ -552,10 +552,59 @@
     <Setter Property="Background" Value="{DynamicResource Ui.Input}"/>
     <Setter Property="BorderThickness" Value="0"/>
   </Style>
+  <!-- Keyed parts keep these view controls separate from mesh-editing thumbs. -->
+  <Style x:Key="SliderRail" TargetType="RepeatButton">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RepeatButton">
+          <Border Background="Transparent">
+            <Border Height="3" CornerRadius="1.5" VerticalAlignment="Center" Background="{TemplateBinding Background}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="SliderHandle" TargetType="Thumb">
+    <Setter Property="Width" Value="14"/>
+    <Setter Property="Height" Value="14"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <Ellipse Fill="{DynamicResource Ui.Accent}" Stroke="{DynamicResource Ui.OnAccent}" StrokeThickness="1"/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
   <Style TargetType="Slider">
     <Setter Property="Foreground" Value="{DynamicResource Ui.Accent}"/>
-    <Setter Property="Margin" Value="0,5"/>
+    <Setter Property="Margin" Value="0,3"/>
+    <Setter Property="MinHeight" Value="24"/>
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocus}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Slider">
+          <Grid Background="Transparent">
+            <Track x:Name="PART_Track" Margin="8,0" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+              <Track.DecreaseRepeatButton>
+                <RepeatButton Style="{StaticResource SliderRail}" Background="{DynamicResource Ui.Accent}" Command="{x:Static Slider.DecreaseLarge}"/>
+              </Track.DecreaseRepeatButton>
+              <Track.Thumb>
+                <Thumb Style="{StaticResource SliderHandle}"/>
+              </Track.Thumb>
+              <Track.IncreaseRepeatButton>
+                <RepeatButton Style="{StaticResource SliderRail}" Background="{DynamicResource Ui.Border}" Command="{x:Static Slider.IncreaseLarge}"/>
+              </Track.IncreaseRepeatButton>
+            </Track>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.45"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
   <Style TargetType="Hyperlink">
     <Setter Property="Foreground" Value="{DynamicResource Ui.AccentText}"/>

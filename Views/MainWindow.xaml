@@ -229,7 +229,7 @@
                             </DataTemplate>
                         </TreeView.Resources>
                     </TreeView>
-                        <TextBlock Text="Your sources and surfaces will appear here." TextAlignment="Center" Margin="14,20" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource MutedText}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ImportedVideos.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                        <TextBlock Text="Your sources and surfaces will appear here." TextAlignment="Center" Margin="14,20" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource MutedText}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ProjectTree.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                     </Grid>
                     <Button Grid.Row="3" Content="+ Add surface" Command="{Binding CreateMeshCommand}" Margin="0,8,0,10" ToolTip="Select a source, then create a mapped surface" />
                     <Border Grid.Row="4" BorderBrush="{DynamicResource Ui.Border}" BorderThickness="0,1,0,0" Padding="0,12,0,0">

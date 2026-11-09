@@ -33,7 +33,7 @@
      <WrapPanel Margin="0,5">
       <ComboBox x:Name="ImageSize" Width="115" SelectedIndex="0"><ComboBoxItem Content="1024x1024" /><ComboBoxItem Content="1536x1024" /><ComboBoxItem Content="1024x1536" /></ComboBox>
       <ComboBox x:Name="Quality" Width="85" SelectedIndex="1" Margin="6,0"><ComboBoxItem Content="low" /><ComboBoxItem Content="medium" /><ComboBoxItem Content="high" /></ComboBox>
-      <ComboBox x:Name="ImageBackground" Width="100" SelectedIndex="0"><ComboBoxItem Content="opaque" /><ComboBoxItem Content="auto" /><ComboBoxItem x:Name="TransparentOption" Content="transparent" /></ComboBox>
+      <ComboBox x:Name="ImageBackground" Width="120" SelectedIndex="0"><ComboBoxItem Content="opaque" /><ComboBoxItem Content="auto" /><ComboBoxItem x:Name="TransparentOption" Content="transparent" /></ComboBox>
      </WrapPanel>
      <WrapPanel><TextBlock Text="Variants" VerticalAlignment="Center" Margin="0,0,6,0" /><ComboBox x:Name="Variants" Width="60" SelectedIndex="1"><ComboBoxItem Content="1" /><ComboBoxItem Content="2" /><ComboBoxItem Content="3" /><ComboBoxItem Content="4" /></ComboBox></WrapPanel>
      <Button x:Name="ReferenceButton" Content="Add reference image… (up to 2)" Click="AddReference_Click" HorizontalAlignment="Left" Margin="0,6" />
@@ -41,7 +41,7 @@
      <TextBlock Text="Download folder" Margin="0,8,0,0" /><TextBox x:Name="Folder" Margin="0,4" />
      <Button Content="Choose folder…" Click="Folder_Click" HorizontalAlignment="Left" />
      <CheckBox x:Name="Consent" Margin="0,10"><TextBlock Text="Send this prompt, selected surface names/layout guidance, and any supported guide/reference images to the selected provider. API charges apply at my account's pricing. No reliable cost estimate is available here. OpenAI uses one request for the batch; Gemini and Stability use one request per variant. Completed results download to this folder." TextWrapping="Wrap" /></CheckBox>
-     <Button Content="Generate and download" Click="Generate_Click" Padding="10,6" />
+     <Button Style="{StaticResource PrimaryButton}" Content="Generate and download" Click="Generate_Click" Padding="10,6" />
     </StackPanel>
    </StackPanel></ScrollViewer>
    <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
