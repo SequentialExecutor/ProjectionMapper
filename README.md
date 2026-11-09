@@ -2,6 +2,8 @@
 
 Open source projection mapping software, inspired by the MapMap project.
 
+**New here? Follow the [step-by-step tutorial](docs/TUTORIAL.md)** to create your first projection, generate artwork, and run a show.
+
 I attempted to fork MapMap and modernize it, while fixing a bug causing a crash in Win11, as well as tweak features I wanted. However, the various Qt libraries have changed over the years and I rapidly grew annoyed by endless battles between compilation errors and behavioral issues.
 
 This project is a from-scratch build in C# .NET 9. I considered making it in .NET MAUI for cross-platform support, but I'm realistically just trying to get something simple to use for my wedding in <6 months, and being cheap about it (not wanting to buy a license for anything, if possible).
