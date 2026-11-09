@@ -27,6 +27,9 @@ internal static class CameraWindowsChecks
     {
         // Actual OpenCV generation/detection on explicitly synthetic image fixtures. This is not a real projector accuracy report.
         var pattern = CameraMarkerService.NewPattern(1280, 960, new(0, 0, 1280, 960));
+        Check(pattern.Markers.Select(m => m.Id).Distinct().Count() == 9, "production pattern generates nine unique session IDs");
+        // Use repeatable IDs for the perspective/JPEG fixture; production sessions remain random.
+        pattern.Markers = pattern.Markers.Select((marker, index) => marker with { Id = index }).ToList();
         using var board = CameraMarkerService.Render(pattern);
         var detected = CameraMarkerService.Detect(pattern, Photo(board));
         Check(detected.Matches.Count == 9 && detected.DuplicateIds.Count == 0, "actual native dictionary generation and detection identify all session tags");
