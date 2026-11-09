@@ -41,10 +41,10 @@ internal static class ArtistChecks
             var service = new ProjectService(); string path = Path.Combine(folder, "show.pmproj");
             Check(await service.SaveAsync(project, path), "artist project saves");
             var loaded = (await service.LoadAsync(path))!;
-            Check(loaded.ProjectVersion == 5 && loaded.ImportedVideos[0].MeshLayers[0].Appearance.Mask.Count == 4 && loaded.OutputAppearances[0].Gamma == 2 && loaded.PlaylistGroups[0].AdvanceMode == CueAdvanceMode.Manual, "masks, output correction and cues survive reopen");
+            Check(loaded.ProjectVersion == 6 && loaded.ImportedVideos[0].MeshLayers[0].Appearance.Mask.Count == 4 && loaded.OutputAppearances[0].Gamma == 2 && loaded.PlaylistGroups[0].AdvanceMode == CueAdvanceMode.Manual, "masks, output correction and cues survive reopen");
             loaded.ImportedVideos[0].MeshLayers[0].Appearance = crossed;
             Check(!await service.SaveAsync(loaded, path) && (await service.LoadAsync(path))!.ImportedVideos[0].MeshLayers[0].Appearance.Mask.Count == 4, "bad mask cannot replace good project");
-            foreach (int version in new[] { 1, 2, 3, 4 })
+            foreach (int version in new[] { 1, 2, 3, 4, 5 })
             {
                 string old = Path.Combine(folder, $"v{version}.pmproj");
                 await File.WriteAllTextAsync(old, $"{{\"ProjectVersion\":{version}}}");

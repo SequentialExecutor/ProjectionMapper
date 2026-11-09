@@ -785,7 +785,7 @@ namespace ProjectionMapper.Services
             try
             {
                 // Use ffprobe to get duration
-                var ffprobe = (ffmpegPath ?? "ffmpeg").Replace("ffmpeg", "ffprobe");
+                var ffprobe = FfmpegTools.ProbeFor(ffmpegPath ?? FfmpegTools.Resolve());
                 var psi = new ProcessStartInfo
                 {
                     FileName = ffprobe,
@@ -821,7 +821,7 @@ namespace ProjectionMapper.Services
             try
             {
                 // Try ffprobe first
-                var ffprobe = (ffmpegPath ?? "ffmpeg").Replace("ffmpeg", "ffprobe");
+                var ffprobe = FfmpegTools.ProbeFor(ffmpegPath ?? FfmpegTools.Resolve());
                 var psi = new ProcessStartInfo
                 {
                     FileName = ffprobe,

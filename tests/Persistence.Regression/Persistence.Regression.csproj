@@ -6,6 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Services/DeploymentProject.cs" Link="DeploymentProject.cs" />
+    <Compile Include="../../Services/DeploymentSettings.cs" Link="DeploymentSettings.cs" />
+    <Compile Include="../../Services/PortableProjectService.cs" Link="PortableProjectService.cs" />
+    <Compile Include="../../Services/PreflightService.cs" Link="PreflightService.cs" />
+    <Compile Include="../../Services/FfmpegTools.cs" Link="FfmpegTools.cs" />
+    <Compile Include="../../Services/RehearsalRecorder.cs" Link="RehearsalRecorder.cs" />
+    <Compile Include="../../Services/DeploymentReports.cs" Link="DeploymentReports.cs" />
     <!-- Run the real persistence implementation without requiring WPF or FFmpeg. -->
     <Compile Include="../../Services/ArtworkGenerationService.cs" Link="ArtworkGenerationService.cs" />
     <Compile Include="../../Services/StillPlaybackClock.cs" Link="StillPlaybackClock.cs" />

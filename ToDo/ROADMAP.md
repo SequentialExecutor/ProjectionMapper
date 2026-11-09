@@ -1,6 +1,6 @@
 # ProjectionMapper development roadmap
 
-Status: implementation delivered through Milestone 6; hardware/live-account acceptance remains open. Milestone 7 and later work remain planned.
+Status: implementation delivered through Milestone 7; physical, sustained-show and live-account acceptance remains open. Automated calibration and other later work remain planned.
 Updated: November 9, 2026.
 
 ## Product goal
@@ -193,6 +193,8 @@ Acceptance:
 Dependency: Milestones 1–3; polygon mask geometry should be shared with Milestone 4.
 
 ## Milestone 7 — Portable installation and release readiness
+
+Implementation delivered: see [Installation, collection and rehearsal](INSTALLATION.md) for atomic collection/checksums, destination output review, preflight, observed rehearsal reports, Windows publishing and remaining real-hardware acceptance.
 
 Goal: transfer, rehearse, and run a complete show on another supported Windows machine.
 

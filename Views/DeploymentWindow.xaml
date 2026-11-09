@@ -1,0 +1,17 @@
+<Window x:Class="ProjectionMapper.Views.DeploymentWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Collect project, preflight and rehearsal" Width="850" Height="730" WindowStartupLocation="CenterOwner">
+ <DockPanel Margin="16">
+  <StackPanel DockPanel.Dock="Top">
+   <TextBlock Text="Prepare this installation for another machine" FontSize="21" FontWeight="Bold" />
+   <TextBlock Text="Collection uses a snapshot and leaves the open project unchanged. Copy the whole collected folder; install the application/runtime and media tools separately." TextWrapping="Wrap" Margin="0,8" />
+   <WrapPanel><Button x:Name="Collect" Content="Collect Project…" Click="Collect_Click" Padding="10,6" Margin="0,4,8,4" /><Button x:Name="Preflight" Content="Run preflight" Click="Preflight_Click" Padding="10,6" Margin="0,4,8,4" /><CheckBox x:Name="InspectMedia" IsChecked="True" Content="Inspect media metadata" VerticalAlignment="Center" /></WrapPanel>
+   <WrapPanel><Button x:Name="StartRehearsal" Content="Start rehearsal recording" Click="Start_Click" Padding="10,6" Margin="0,4,8,4" /><Button x:Name="StopRehearsal" Content="Stop / show report" Click="Stop_Click" Padding="10,6" Margin="0,4,8,4" /><Button x:Name="Export" Content="Export report JSON…" Click="Export_Click" Padding="10,6" Margin="0,4" /></WrapPanel>
+   <TextBlock Text="Recording observes playback you operate in the main window. It does not start cues or certify projector alignment, audiovisual drift, or a successful four-hour show." TextWrapping="Wrap" FontSize="12" Margin="0,6" />
+  </StackPanel>
+  <StackPanel DockPanel.Dock="Bottom">
+   <TextBlock Text="Operator notes — physical checks, audio observations, issues" Margin="0,10,0,4" /><TextBox x:Name="Notes" AcceptsReturn="True" Height="70" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" />
+   <ProgressBar x:Name="Progress" Height="8" Margin="0,8" Minimum="0" Maximum="100" />
+   <WrapPanel><Button x:Name="CancelOperation" Content="Cancel operation" Click="Cancel_Click" IsEnabled="False" /><TextBlock x:Name="Status" TextWrapping="Wrap" Margin="10,0" VerticalAlignment="Center" /></WrapPanel>
+  </StackPanel>
+  <TextBox x:Name="Report" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,8" FontFamily="Consolas" />
+ </DockPanel>
+</Window>

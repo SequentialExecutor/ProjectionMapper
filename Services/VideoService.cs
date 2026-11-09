@@ -1878,7 +1878,7 @@ namespace ProjectionMapper.Services
         /// </summary>
         private string ResolveFfmpegExecutable()
         {
-            return _ffmpegPath ?? "ffmpeg";
+            return FfmpegTools.Resolve(_ffmpegPath);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <Content Include="ProjectionMapper.ico" />
+    <None Update="ToDo/INSTALLATION.md" Link="INSTALLATION.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- Regression programs are separate projects, not application sources. -->
     <Compile Remove="tests/**/*.cs" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

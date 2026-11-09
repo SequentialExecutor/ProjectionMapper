@@ -42,6 +42,8 @@ namespace ProjectionMapper.Rendering
         {
             _artworkPreview.Clear(); if (!previewsOnly) _artwork.Clear();
         }
+        private readonly ConcurrentDictionary<int, long> _outputFrameCounts = new();
+        public List<ProjectionMapper.Models.OutputFrameObservation> ObserveOutputs() => _monitorRenderers.Keys.OrderBy(i => i).Select(i => new ProjectionMapper.Models.OutputFrameObservation(i, _outputFrameCounts.GetValueOrDefault(i), GetMonitorRenderMilliseconds(i))).ToList();
         private readonly ConcurrentDictionary<int, BitmapSource> _calibrationPatterns = new();
         private readonly ConcurrentDictionary<int, BitmapSource> _latestMonitorFrames = new();
         private readonly object _layerSubmissionLock = new();
@@ -859,7 +861,7 @@ catch (Exception ex)
                     monitorRenderer.InitializeAsync(renderW, renderH, dpiX, dpiY, CancellationToken.None).GetAwaiter().GetResult();
 
                     // Subscribe to its FrameReady event to update the fullscreen host
-                    monitorRenderer.FrameReady += (bmp) => OnMonitorFrameReady(monitorIndex, bmp);
+                    monitorRenderer.FrameReady += (bmp) => { if (bmp != null) _outputFrameCounts.AddOrUpdate(monitorIndex, 1, (_, count) => count + 1); OnMonitorFrameReady(monitorIndex, bmp); };
 
                     // Store renderer
                     _monitorRenderers[monitorIndex] = monitorRenderer;

@@ -118,6 +118,7 @@ namespace ProjectionMapper
                 // Create PlaylistService for group-based playback
                 _playlistService = new PlaylistService(_videoService);
                 InitializeArtistControls();
+                InitializeDeployment();
                 UpdateLoopingMode(_vm.IsPlaylistMode);
                 
                 // Expose VideoService so MeshEditorControl can subscribe for isolated previews
@@ -174,6 +175,7 @@ namespace ProjectionMapper
 
                         // Enumerate monitors and populate the dropdown
                         EnumerateMonitors();
+                        _savedFingerprint = ProjectFingerprint(BuildProjectModel());
                         await InitializeRecoveryAsync();
                     }
                     catch (Exception ex)
@@ -226,6 +228,7 @@ namespace ProjectionMapper
                             }
                         }
 
+                        await CloseDeploymentAsync();
                         if (_recovery != null) await _recovery.DisposeAsync();
                         Debug.WriteLine("MainWindow: Disposing services");
                         
@@ -497,7 +500,7 @@ namespace ProjectionMapper
                 Debug.WriteLine("MainWindow: Save project requested");
 
                 // If no current path, do Save As
-                if (string.IsNullOrEmpty(_currentProjectPath))
+                if (string.IsNullOrEmpty(_currentProjectPath) || IsCollectedLocation(_currentProjectPath))
                 {
                     await OnSaveAsProjectRequested();
                     return;
@@ -548,6 +551,7 @@ namespace ProjectionMapper
                     return;
                 }
 
+                if (IsCollectedLocation(path)) throw new InvalidOperationException("Collected folders are verified transfer snapshots. Save edits outside the collection, then collect again.");
                 Debug.WriteLine($"MainWindow: Saving project to {path}");
 
                 // Build project model from current state
@@ -621,6 +625,7 @@ namespace ProjectionMapper
                     return;
                 }
 
+                if (!await VerifyCollectionBeforeOpenAsync(path)) return;
                 Debug.WriteLine($"MainWindow: Loading project from {path}");
 
                 // Validate and resolve all files before discarding the current editor state.
@@ -643,7 +648,8 @@ namespace ProjectionMapper
 
                 // Missing media must be resolved before the current project is cleared.
                 bool relinked = project.ImportedVideos.Any(v => !File.Exists(v.SourcePath) && !(v.MeshLayers.Count > 0 && v.MeshLayers.All(m => m.ArtworkAssetId != null)));
-                if (!await RelinkMissingMediaAsync(project)) return;
+                bool outputsChanged = DeploymentProject.NeedsOutputSetup(project, CaptureOutputLayout());
+                if (!await RelinkMissingMediaAsync(project) || !PrepareProjectOutputs(project)) return;
 
                 // Clear current project state
                 await ClearProjectState();
@@ -652,7 +658,7 @@ namespace ProjectionMapper
                 await LoadProjectState(project);
 
                 _currentProjectPath = path;
-                _savedFingerprint = recovered || relinked ? string.Empty : ProjectFingerprint(BuildProjectModel());
+                _savedFingerprint = recovered || relinked || outputsChanged ? string.Empty : ProjectFingerprint(BuildProjectModel());
                 RefreshDirtyState();
                 Debug.WriteLine("MainWindow: Project loaded successfully");
                 _vm.StatusText = $"Loaded: {Path.GetFileName(path)}";
@@ -909,6 +915,7 @@ namespace ProjectionMapper
         {
             try
             {
+                if (!OutputsMayOpen()) { foreach (int index in _activeMonitorWindows.Keys.ToArray()) HideMonitorWindow(index); return; }
                 // Throttle calls to prevent rapid window creation/destruction
                 lock (_ensureMonitorWindowsLock)
                 {
@@ -987,6 +994,7 @@ namespace ProjectionMapper
         /// </summary>
         private void ShowMonitorWindow(int monitorIndex)
         {
+            if (_outputsNeedSetup) return;
             if (monitorIndex < 0)
             {
                 return;
@@ -1374,6 +1382,7 @@ namespace ProjectionMapper
             {
                 Debug.WriteLine("MainWindow: Enumerating monitors...");
                 _monitors.Clear();
+                _detectedDisplays.Clear();
                 _monitorItems.Clear();
 
                 // Collect monitor info using EnumDisplayMonitors for accurate physical coordinates
@@ -1475,6 +1484,7 @@ namespace ProjectionMapper
 
                     // Store both virtual (for positioning) and physical (for rendering) dimensions
                     _monitors.Add(new MonitorInfo(virtualW, virtualH, virtualLeft, virtualTop, physicalW, physicalH));
+                    _detectedDisplays.Add(new DisplayDescriptor(i, deviceName, WindowsDisplayIdentity.MonitorId(deviceName), virtualLeft, virtualTop, virtualW, virtualH, physicalW, physicalH, isPrimary));
 
                     var isPrimaryStr = isPrimary ? " (Primary)" : "";
                     // Show the logical resolution (matches Windows Display Settings) with native res if DPI-scaled
@@ -1635,7 +1645,7 @@ namespace ProjectionMapper
                     "Recover Unsaved Work", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     var project = await _projectService.LoadAsync(candidate);
-                    if (project != null && await RelinkMissingMediaAsync(project))
+                    if (project != null && await RelinkMissingMediaAsync(project) && PrepareProjectOutputs(project))
                     {
                         await ClearProjectState();
                         await LoadProjectState(project);
@@ -1963,7 +1973,8 @@ namespace ProjectionMapper
                     Name = _vm.ActiveProject?.Name ?? "Untitled Project",
                     CreatedAt = _vm.ActiveProject?.CreatedAt ?? DateTime.UtcNow,
                     LastModified = _vm.ActiveProject?.LastModified ?? DateTime.UtcNow,
-                    ProjectVersion = 5,
+                    ProjectVersion = 6,
+                    OutputLayout = _outputsNeedSetup ? _vm.ActiveProject?.OutputLayout?.Copy() : CaptureOutputLayout(),
                     PlaylistMode = _vm.IsPlaylistMode,
                     OutputAppearances = _vm.ActiveProject?.OutputAppearances.Select(o => o.Copy()).ToList() ?? new(),
                     ShowMeshOverlay = PART_GlobalShowMeshOverlayCheckbox.IsChecked == true,
@@ -2070,6 +2081,8 @@ namespace ProjectionMapper
             {
                 _loadingProject = true;
                 _projectSession = Guid.NewGuid();
+                await CloseDeploymentAsync();
+                _outputsNeedSetup = false; _approvedOutputLayout = CaptureOutputLayout();
                 await CloseArtworkEditorAsync();
                 _rendererManager.ClearArtwork(); _artworkCrops.Clear(); _artworkPreviewIds.Clear();
                 _videoService.ClearStillFallbacks();
@@ -2132,6 +2145,8 @@ namespace ProjectionMapper
                 // Cache source frames during loading without flashing inactive artwork/video groups.
                 if (project.PlaylistMode) _videoService.EnablePlaylistMode();
                 else _videoService.DisablePlaylistMode();
+                _approvedOutputLayout = project.OutputLayout?.Copy() ?? CaptureOutputLayout();
+                _outputsNeedSetup = false; // Both file-load paths require PrepareProjectOutputs before clearing the current show.
                 ApplySavedOutputAppearances(project);
                 _vm.InputZoom = project.InputZoom;
                 _vm.OutputZoom = project.OutputZoom;

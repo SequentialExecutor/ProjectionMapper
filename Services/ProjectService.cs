@@ -60,7 +60,7 @@ namespace ProjectionMapper.Services
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, _jsonOptions), _jsonOptions)
                     ?? throw new InvalidDataException("Project snapshot is empty.");
                 Validate(snapshot);
-                snapshot.ProjectVersion = 5;
+                snapshot.ProjectVersion = 6;
                 snapshot.LastModified = DateTime.UtcNow;
                 ResolvePaths(snapshot, directory, relative: true);
                 Directory.CreateDirectory(directory);
@@ -123,9 +123,9 @@ namespace ProjectionMapper.Services
             return project;
         }
 
-        private static void Validate(ProjectModel project)
+        public static void Validate(ProjectModel project)
         {
-            if (project.ProjectVersion < 1 || project.ProjectVersion > 5)
+            if (project.ProjectVersion < 1 || project.ProjectVersion > 6)
                 throw new InvalidDataException($"Project version {project.ProjectVersion} is unsupported. Use a compatible version of ProjectionMapper.");
             if (project.ImportedVideos == null || project.PlaylistGroups == null || project.Surfaces == null)
                 throw new InvalidDataException("Project collections cannot be null.");
@@ -146,6 +146,13 @@ namespace ProjectionMapper.Services
             {
                 if (asset == null || !artworkIds.Add(asset.Id)) throw new InvalidDataException("Artwork assets need unique IDs.");
                 ArtworkRules.ValidateAsset(asset);
+            }
+            if (project.OutputLayout != null)
+            {
+                if (string.IsNullOrWhiteSpace(project.OutputLayout.ComputerId) || project.OutputLayout.Displays == null || project.OutputLayout.Displays.Count > 32 ||
+                    project.OutputLayout.Displays.Any(d => d == null || d.Index < 0 || d.Width <= 0 || d.Height <= 0 || d.RenderWidth <= 0 || d.RenderHeight <= 0 || string.IsNullOrWhiteSpace(d.DeviceName)) ||
+                    project.OutputLayout.Displays.Select(d => d.Index).Distinct().Count() != project.OutputLayout.Displays.Count)
+                    throw new InvalidDataException("Saved output layout is invalid.");
             }
             if (project.OutputAppearances == null || project.OutputAppearances.Count > 32) throw new InvalidDataException("Output corrections are invalid.");
             var outputIds = new System.Collections.Generic.HashSet<string>();

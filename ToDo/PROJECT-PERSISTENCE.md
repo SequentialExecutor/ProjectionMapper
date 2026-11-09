@@ -7,7 +7,7 @@
   becomes `<project>.bak`. Serialization errors, cancellation, and failed staging
   do not truncate the previous save. A corrupt primary cannot replace a good backup.
 - Saves on a service instance are serialized; staging filenames are unique.
-- Versions 1–5 remain readable; unsupported versions and malformed project
+- Versions 1–6 remain readable; unsupported versions and malformed project
   data produce a useful error before the active editor is cleared. Saving writes v4, including embedded photo references, surface proposals, and portable artwork.
 - Surface/layer collections and vector/matrix fields round-trip correctly.
 - UI snapshots preserve identity, creation date, surface metadata, display
@@ -82,3 +82,5 @@ that file format. Project collection/packaging is a later feature, distinct from
 relative path support and individual missing-media relinking.
 
 Format 5 adds surface masks/feathering/deformation grids, cue advancement/fades and per-output color/blending. See [Artist controls](ARTIST-CONTROLS.md).
+
+Format 6 adds saved output hardware/layout for explicit destination reassignment. Verified collections use contained media paths and a SHA-256 manifest; edit via Save As outside the collection. See [Installation](INSTALLATION.md).

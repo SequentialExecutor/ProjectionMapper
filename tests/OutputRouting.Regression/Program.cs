@@ -86,6 +86,7 @@ internal static class Program
             ScenePhotoChecks.Run();
             RenderingChecks.Run();
             ArtistWindowsChecks.Run();
+            DeploymentWindowsChecks.Run();
             Console.WriteLine("Output routing regression checks passed.");
             return 0;
         }

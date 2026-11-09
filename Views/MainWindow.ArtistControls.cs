@@ -29,27 +29,36 @@ namespace ProjectionMapper
             if (e.StagingItem.Input is not KeyEventArgs key || key.RoutedEvent != Keyboard.PreviewKeyDownEvent) return;
             if (key.Key == Key.F12 && !key.IsRepeat) { ToggleBlackout(); key.Handled = true; return; }
             if (key.Key == Key.F10 && !key.IsRepeat && IsActive) { PART_Performance.IsChecked = PART_Performance.IsChecked != true; key.Handled = true; return; }
-            if (!_rendererManager.IsPerformanceMode) return;
+            if (!_rendererManager.IsPerformanceMode || !IsActive) return;
             if (key.Key == Key.Space && !key.IsRepeat) { Go_Click(this, new RoutedEventArgs()); key.Handled = true; return; }
             // Editor command bindings must not bypass the disabled editor via keyboard shortcuts.
             if (key.Key is Key.Delete or Key.Back || ((Keyboard.Modifiers & ModifierKeys.Control) != 0 && key.Key != Key.S)) key.Handled = true;
         }
         private void ToggleBlackout()
         {
+            if (_outputsNeedSetup && _rendererManager.IsBlackout) { _vm.StatusText = "Output setup is required before restoring projector output."; return; }
             _rendererManager.SetBlackout(!_rendererManager.IsBlackout);
+            _rehearsalRecorder?.Record("blackout", _rendererManager.IsBlackout ? "Enabled" : "Restored");
             PART_Blackout.Content = _rendererManager.IsBlackout ? "RESTORE OUTPUT (F12)" : "BLACKOUT (F12)";
             _vm.StatusText = _rendererManager.IsBlackout ? "Blackout — playback continues; F12 restores the current cue" : "Output restored to current cue";
         }
         private void Blackout_Click(object sender, RoutedEventArgs e) => ToggleBlackout();
-        private void Performance_Changed(object sender, RoutedEventArgs e)
+        private async void Performance_Changed(object sender, RoutedEventArgs e)
         {
             if (_rendererManager == null) return;
             bool enabled = PART_Performance.IsChecked == true;
+            int request = ++_performanceRequest;
+            if (enabled)
+            {
+                try { if (!await CheckBeforePerformanceAsync()) { if (request == _performanceRequest) PART_Performance.IsChecked = false; return; } }
+                catch (Exception ex) { Debug.WriteLine($"Performance preflight failed: {ex}"); _vm.StatusText = ex.Message; if (request == _performanceRequest) PART_Performance.IsChecked = false; return; }
+                if (request != _performanceRequest || PART_Performance.IsChecked != true) return;
+            }
             // Generation may finish while editing is locked; accepting or projecting new variants waits until unlock.
             _artworkWindow?.SetEditingLocked(enabled);
             _rendererManager.SetPerformanceMode(enabled);
             PART_EditorContent.IsEnabled = PART_EditToolbar.IsEnabled = PART_FileMenu.IsEnabled = PART_EditMenu.IsEnabled = PART_PlaylistMenu.IsEnabled = !enabled;
-            PART_CueSettings.IsEnabled = !enabled; PART_OutputSettings.IsEnabled = !enabled;
+            PART_CueSettings.IsEnabled = !enabled; PART_OutputSettings.IsEnabled = !enabled; PART_OutputSetup.IsEnabled = !enabled;
             _vm.StatusText = enabled ? "Performance mode — editing locked; Space = Go, F12 = blackout" : "Editing enabled";
         }
         private async void Go_Click(object sender, RoutedEventArgs e)
@@ -114,7 +123,7 @@ namespace ProjectionMapper
             }
             catch (Exception ex) { _rendererManager.SetSurfaceAppearance(mesh.Id!, before); Debug.WriteLine($"Surface controls failed: {ex}"); _vm.StatusText = ex.Message; }
         }
-        private static List<ArtistOutput> ArtistOutputs() => System.Windows.Forms.Screen.AllScreens.Select((screen, index) => new ArtistOutput(index, screen.DeviceName, $"{index + 1}: {screen.DeviceName} ({screen.Bounds.Width}×{screen.Bounds.Height})")).ToList();
+        private List<ArtistOutput> ArtistOutputs() => _detectedDisplays.Select(d => new ArtistOutput(d.Index, d.DeviceName, $"{d.Index + 1}: {d.DeviceName} ({d.RenderWidth}×{d.RenderHeight})")).ToList();
         private void ApplySavedOutputAppearances(ProjectModel project)
         {
             foreach (var output in ArtistOutputs())

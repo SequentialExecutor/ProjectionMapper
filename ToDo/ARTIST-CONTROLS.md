@@ -130,3 +130,5 @@ Manual acceptance before performance:
 5. Match two projector outputs and overlap ramps on physical projectors, including
    after disconnect/reconnect. Test a representative four-hour show and record
    frame time, memory and audiovisual drift.
+
+Current saves use format 6, retaining these controls and adding destination output layout. See [Installation and collection](INSTALLATION.md).

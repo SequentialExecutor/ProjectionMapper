@@ -65,6 +65,8 @@
         <!-- Tool bar -->
         <ToolBarTray DockPanel.Dock="Top" IsLocked="False">
             <ToolBar Band="0" BandIndex="0">
+                <Button Content="Collect / preflight / rehearsal…" Click="Deployment_Click" />
+                <Button x:Name="PART_OutputSetup" Content="Output setup…" Click="OutputSetup_Click" />
                 <ToggleButton x:Name="PART_Performance" Content="Performance mode (F10)" Checked="Performance_Changed" Unchecked="Performance_Changed" />
                 <Button x:Name="PART_Blackout" Content="BLACKOUT (F12)" Click="Blackout_Click" Background="DarkRed" Foreground="White" />
                 <Button x:Name="PART_Go" Content="Go / next cue (Space in performance mode)" Click="Go_Click" />

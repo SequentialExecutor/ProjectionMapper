@@ -72,7 +72,7 @@ internal static class ArtworkChecks
                 MeshLayers = new() { new() { Id = "mesh", SourceId = "source", ArtworkAssetId = asset.Id } } });
             var service = new ProjectService(); Check(await service.SaveAsync(project, path), "artwork project saves");
             var saved = (await service.LoadAsync(path))!;
-            Check(saved.ProjectVersion == 5 && saved.ArtworkAssets[0].ImageBase64 == asset.ImageBase64 && saved.ImportedVideos[0].MeshLayers[0].ArtworkAssetId == asset.Id, "portable PNG and assignments round trip");
+            Check(saved.ProjectVersion == 6 && saved.ArtworkAssets[0].ImageBase64 == asset.ImageBase64 && saved.ImportedVideos[0].MeshLayers[0].ArtworkAssetId == asset.Id, "portable PNG and assignments round trip");
             Check(!File.Exists(saved.ImportedVideos[0].SourcePath), "artwork project retains missing-video metadata without requiring it during persistence");
             project.ImportedVideos[0].MeshLayers[0].ArtworkAssetId = "missing";
             Check(!await service.SaveAsync(project, path), "dangling artwork assignment rejected");
