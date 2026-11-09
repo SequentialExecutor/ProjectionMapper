@@ -48,7 +48,7 @@ internal static class TutorialScreenshots
             var brush = new VisualBrush(content)
             {
                 AutoLayoutContent = false, ViewboxUnits = BrushMappingMode.Absolute,
-                Viewbox = new Rect(content.RenderSize), Stretch = Stretch.Fill
+                Viewbox = new Rect((System.Windows.Point)VisualTreeHelper.GetOffset(content), content.RenderSize), Stretch = Stretch.Fill
             };
             context.DrawRectangle(brush, null, new Rect(margin.Left, margin.Top, content.RenderSize.Width, content.RenderSize.Height));
         }
