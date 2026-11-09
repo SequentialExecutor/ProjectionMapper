@@ -11,3 +11,5 @@ dotnet run --project tests/OutputRouting.Regression/OutputRouting.Regression.csp
 The Windows regression must pass. Captures are written to `artifacts/ui-previews/tutorial/`; `.NET Desktop CI` includes them in its `ui-previews` artifact. Review each capture before copying it here. The helper never sends AI requests, enters credentials, or projects calibration patterns. Display names come from the actual Windows capture environment and will vary on another machine. Window content is captured without the native title bar or operating-system file pickers.
 
 `workspace-dark.png` is the earlier empty-editor capture from the UI regression. The tutorial uses captions alongside unmodified screenshots so controls and labels remain authentic.
+
+`projection-preview.png` shows a locally generated calibration grid in the real preview control; it is not a physical projector capture. `output-status.png` observes the actual empty editor on the Windows capture machine.

@@ -1,6 +1,6 @@
 # ProjectionMapper development roadmap
 
-Status: implementation delivered through Milestone 7; Milestone 8 output verification is in software verification; physical, sustained-show and live-account acceptance remains open. Camera-assisted planar calibration is implemented; its real-installation acceptance and other later work remain open.
+Status: implementation delivered through Milestone 8; physical, sustained-show and live-account acceptance remains open. Camera-assisted planar calibration is implemented; its real-installation acceptance and other later work remain open.
 Updated: November 9, 2026.
 
 ## Product goal
@@ -228,7 +228,7 @@ Dependency: Milestones 3–4. Full 3D reconstruction is outside the first releas
 
 Goal: make empty-output diagnosis practical without disrupting playback or adding permanent editor panels.
 
-Implementation: [Output verification](OUTPUT-VERIFICATION.md).
+Implementation delivered: [Output verification](OUTPUT-VERIFICATION.md). Software regression and captured-Windows-UI checks pass; installation-hardware acceptance remains open.
 
 Work:
 - Replace the F5 preview placeholder with a live composed-frame fullscreen view on the editor display.

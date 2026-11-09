@@ -14,6 +14,7 @@ This tutorial follows the redesigned desktop UI. A **source** supplies video; a 
 - [Generate and save AI artwork](#7-optional-generate-ai-artwork)
 - [Build cues and run the show](#9-arrange-a-show-with-cues)
 - [Transfer to another computer](#11-save-and-transfer-the-complete-show)
+- [Preview and check your outputs](#13-preview-and-output-status)
 - [Troubleshooting and shortcuts](#12-troubleshooting)
 
 ## 1. Install and open the app
@@ -245,9 +246,19 @@ Treat the collection as a transfer snapshot. To edit an opened collection, save 
 | Photo-created mesh does not align | Photo outlines are starting geometry. Assign and calibrate the projector. |
 | Camera marker imaging will not load | Keep the full application package together; check the Microsoft Visual C++ 2015–2022 x64 redistributable. |
 
+## 13. Preview and output status
+
 Use **View > Preview / F5** for a fullscreen view of the composed editor frame on the editor's display. Press **Esc** or **F5** to close it. The image preserves its aspect ratio, and closing leaves playback and projector assignments intact. Projector color/blending is evaluated on physical outputs.
 
+![Composed editor preview showing the built-in calibration grid with all corners visible](images/projection-preview.png)
+
+*F5 preview with a locally generated calibration grid. The close controls sit below the image so all four corners remain visible. This is an editor preview, not a photograph of a projector.*
+
 For an empty or unexpected output, open **View > Output status…**. Select a display to inspect its routes, current cue activity, cached content, Windows/render dimensions, and recent software frame events. The findings distinguish blackout, output review, missing content, closed windows, and resolution mismatch. **Export diagnostic JSON…** saves a report for troubleshooting. See [output verification](../ToDo/OUTPUT-VERIFICATION.md).
+
+![Output status with per-display dimensions, frame observations, routes and export controls](images/output-status.png)
+
+*Select a display to see its routes and suggested checks. This empty starting project reports no assigned surfaces. Use **Export diagnostic JSON…** to save your actual observations for troubleshooting.*
 
 ## Keyboard reference
 
