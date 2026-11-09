@@ -2,6 +2,8 @@
 
 Start with one short video, one flat object, and one projector. Get that working before adding AI artwork, multiple surfaces, or a playlist. You can learn the editor without a projector by keeping surfaces on **Preview only**.
 
+Screenshots show the Windows app in its starting states, with example text where useful. Empty photo and artwork areas fill as you work. Click a screenshot to view it at full size.
+
 This tutorial follows the redesigned desktop UI. A **source** supplies video; a **surface** (also called a mesh) selects part of that source and maps it onto an object; a **cue** is a playlist group containing sources.
 
 ## Choose your starting point
@@ -48,6 +50,10 @@ Choose **View > Appearance** for Dark, Light, or Follow Windows. The header's Li
 
 ## 3. Import a video and add a surface
 
+![Import media, project tree, Add surface, and the two editing previews](images/workspace-controls.png)
+
+*Steps 1–5: start with **Import media** at the upper left, select the source in **Project**, then use **+ Add surface**. The button is disabled in this opening view because no source is selected. **Fit** sits at the top right of each preview.*
+
 1. Click **Import media** and choose a short local video. The picker lists MP4, AVI, MOV, MKV, and WMV; actual decoding depends on your FFmpeg build and the file's codec. Start with an ordinary MP4.
 2. Select the imported source in **Project**.
 3. Click **+ Add surface**, or right-click the source and choose **Create Mesh Layer**.
@@ -61,6 +67,10 @@ Choose **View > Appearance** for Dark, Light, or Follow Windows. The header's Li
 To map several objects from one video, select the source and add more surfaces. Each gets its own crop and destination. Right-click the source for **Create Sliced Mesh Layers** when you want horizontal slices as a starting point.
 
 ## 4. Assign the projector and align the object
+
+![Manual calibration: output selector, numbered grid, corner coordinates, and mapping lock](images/manual-calibration.png)
+
+*Steps 2–7: choose the output at the top, identify it with **Show numbered grid**, assign the selected mesh, then edit a corner and its X/Y values. **Lock input/output mapping** protects the finished alignment. Your display name will differ.*
 
 1. Select the mesh. Leave **Lock mapping** off while aligning.
 2. Open **Mapping > Manual calibration…**.
@@ -94,6 +104,10 @@ Select a source and enable **Play audio from this source** in the inspector if n
 
 Photo to map helps outline objects and create starting meshes. A regular scene photograph does not establish precise projector alignment; use the alignment workflow afterward.
 
+![Photo to map: import, optional AI analysis, outline tools, and save controls](images/photo-map.png)
+
+*Steps 2–7: import on the left; draw/review outlines on the right; save with the bottom-right button. Mesh creation is disabled here because no video source was selected before opening the dialog. Import a photo before using its editing controls.*
+
 1. Select an imported video source in the main window if you want to create meshes from the photo.
 2. Open **Create > Photo to map…**, then **Import scene photo…**. Importing a photo alone does not upload it.
 3. For manual outlines, choose **Draw polygon**, click perimeter vertices in order, and choose **Finish polygon**. Drag vertices or edit their percentages to refine the outline.
@@ -109,6 +123,10 @@ Editing a photo outline later does not reposition an already calibrated mesh. Fo
 
 Map and name your surfaces first. The artwork library uses those surfaces to guide the composition and preserves their calibrated corners.
 
+![AI artwork: surface selection, provider, API token, prompt, style, palette, and model](images/artwork-settings.png)
+
+*Steps 1–5: select mapped surfaces at the upper left, choose a provider, and enter its API token. The example prompt, style, and palette match the walkthrough below.*
+
 1. Open **Create > AI artwork library…**. Select one to eight surfaces in **Mapped surfaces**; use Ctrl-click for several. Choose **Refresh surfaces** after changing the main project if needed.
 2. Choose **OpenAI**, **Google Gemini**, or **Stability AI**. Enter that provider's **API access token**. Use a provider-issued API key; a chat subscription or browser login token does not provide API access.
 3. Optionally enable **Remember in Windows Credential Manager**. Otherwise the key stays in the dialog's session memory. **Forget stored token** removes the selected provider's saved credential. Keys are not saved in the project.
@@ -122,6 +140,10 @@ Map and name your surfaces first. The artwork library uses those surfaces to gui
 7. Select a completed variant and choose **Preview on projectors**. Inspect it on the real objects. **Restore preview** returns to the permanent content.
 8. Choose **Keep in project library** to retain a candidate, or **Apply to selected surfaces** to assign it. Then save the main project.
 
+![Artwork download folder, upload consent, Generate and download, and project-library actions](images/artwork-download.png)
+
+*Steps 6–8: scroll the left column down to **Download folder**, the upload/billing notice, and **Generate and download**. The bottom-right controls preview, keep, or apply a selected result. Returned images appear in the right-hand area.*
+
 **Checkpoint:** A PNG is in your download folder and accepted artwork is embedded in the saved project. Downloading alone does not accept an image into the project library.
 
 Use **Use selected image's settings** to restore a previous generation setup, or **Use selected as reference** to guide a new variation. **Download selected PNG** exports the selected result again.
@@ -132,13 +154,25 @@ Accepted artwork can play without an API key or network. An existing video can s
 
 Select an unlocked mesh and open **Mapping > Masks and curved mesh…**.
 
+![Surface mask and curved mesh editor with mask, grid, and vertex controls](images/surface-controls.png)
+
+*Mask/grid steps: the editing canvas is on the left; **Draw mask**, **Finish**, feathering, and grid initialization are on the right. Preview, Apply, and Cancel are at the bottom.*
+
 - Use **Draw mask**, click the permitted perimeter, and **Finish** to limit visible content. Add inward feathering for a softer edge.
 - Initialize a curved-surface grid and drag its nodes to adjust content across a curved object. Start with a coarse grid; folded cells are rejected.
 - Choose **Preview on outputs**, inspect the result, then **Apply**. Cancel restores the previous settings.
 
+![Projector color controls: output, brightness, gamma, RGB, and overlap edges](images/projector-color.png)
+
+*Color/blending: choose the output at the top, adjust its sliders while watching your projector, then Apply.*
+
 For output color, use **Show setup > Projector color and blending…**. Select the projector and adjust brightness, gamma, and RGB while watching the physical projection. For overlapping projectors, align the same content first, then adjust opposing blend widths. Save once satisfied. See [artist controls](../ToDo/ARTIST-CONTROLS.md) for the detailed behavior.
 
 ## 9. Arrange a show with cues
+
+![Cue settings: name, source playback, advancement, timed hold, and visual fade](images/cue-settings.png)
+
+*Steps 4–6: **Sources inside this cue** chooses Sequential/Simultaneous; **Advance to the next cue** chooses MediaEnd/Manual/Timed. Edit the hold/fade, then Apply. “Opening” is an example cue name.*
 
 1. Click **New cue** in the Project panel. Right-click the group to rename it.
 2. Right-click an imported source and choose **Add to Group**, then the desired group. Repeat for the sources in that cue. Add another cue for the next part of the show; use a group's **Move Up/Move Down** actions to order it.
@@ -157,17 +191,29 @@ For output color, use **Show setup > Projector color and blending…**. Select t
 
 ## 10. Rehearse and operate
 
+![Preflight and rehearsal: collect, run checks, start and stop recording, and operator notes](images/preflight-rehearsal.png)
+
+*Steps 1–2: **Run preflight** checks the project; the next row starts/stops rehearsal recording. The report area is blank until a check or recording is run. Put your real installation observations in **Operator notes**.*
+
 1. Open **Preflight & rehearsal…** on the bottom strip and choose **Run preflight**. Resolve errors and review warnings about media, decoder tools, and outputs.
 2. Choose **Start rehearsal recording**, operate the actual show, then **Stop / show report**. Add observations and **Export report JSON…** if useful. A report records software observations; it cannot judge physical alignment or audio drift for you.
 3. Save, hide projector outlines, and enable **Performance**. It runs fresh checks and locks editing when ready. Keep the main window active for its live keyboard shortcuts.
 4. Use Go, Play/Pause, and restart as rehearsed. **Blackout / F12** makes projector output black while playback continues. Press it again to restore the current content; blackout is not pause.
 5. If a display is disconnected or the layout changes, review **Show setup > Assign projector outputs…**. Output stays blocked until assignments are reviewed; explicitly restore it afterward and recheck alignment.
 
+![Live show controls: current and next cue, performance, play, restart, Go, and blackout](images/show-controls.png)
+
+*Steps 3–5: **Performance** locks editing after checks; **Play**, restart (↺), **Go →**, and **Blackout** remain together on the show strip. This view is stopped, with no cue groups loaded.*
+
 Before the event, run the full show on the actual computer, projectors, media, and audio equipment, including offline playback if required.
 
 ## 11. Save and transfer the complete show
 
 Normal **Save** preserves your project, embedded accepted artwork, photos, and mapping. It does not copy all original video files beside the project.
+
+![Collect Project button in the preparation window](images/preflight-rehearsal.png)
+
+*Transfer steps 1–3: use **Collect Project…** in the upper-left row. The folder picker opens after you click it; wait for a completed collection before copying the folder.*
 
 1. Save the working project.
 2. Open **Preflight & rehearsal… > Collect Project…** and choose a parent folder.
