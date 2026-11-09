@@ -41,6 +41,15 @@ internal static class DisplayModeWindowsChecks
     }
     public static void Run(MainWindow window)
     {
+        // Console entry points lack WPF's synchronization context. Supply the real dispatcher
+        // context used by Application.Run so async UI event continuations stay on their STA.
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+        try { RunOnDispatcher(window); }
+        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+    }
+    private static void RunOnDispatcher(MainWindow window)
+    {
         // Explicit backend fixture: mode switches, confirmation, failure, and rollback without changing CI hardware.
         var backend = new ModeFixture();
         using (var change = DisplayModeChange.Begin(backend, "projector", Requested))
@@ -94,7 +103,7 @@ internal static class DisplayModeWindowsChecks
     }
     private sealed class ModeFixture : IDisplayModeBackend
     {
-        public DisplayMode Value = Original;
+        public volatile DisplayMode Value = Original;
         public List<bool> Writes = new();
         public int Tests;
         public bool RejectTest, FailTemporaryOnce, RejectPersist;
