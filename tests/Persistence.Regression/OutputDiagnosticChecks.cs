@@ -34,6 +34,8 @@ internal static class OutputDiagnosticChecks
         Check(report.Displays[0].State == "No recent rendered frame", "stalled software frame events are reported");
         report = Sample(); report.Surfaces[0] = report.Surfaces[0] with { TargetDisplay = -1 }; report = OutputDiagnosticService.Analyze(report);
         Check(report.Displays[0].State == "No assigned surfaces" && report.Summary.Contains("1 preview-only"), "preview-only does not falsely imply projection");
+        report = Sample(); report.Displays[0] = report.Displays[0] with { LastFrameUtc = null }; report = OutputDiagnosticService.Analyze(report);
+        Check(report.Displays[0].Metrics.Contains("Composition not observed"), "absence of a frame does not imply a measured zero-millisecond composition");
         var folder = Path.Combine(Path.GetTempPath(), "output-diagnostics-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         try

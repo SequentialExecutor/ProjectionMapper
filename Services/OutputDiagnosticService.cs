@@ -42,7 +42,7 @@ namespace ProjectionMapper.Services
                 string mode = display.Connected ? $"Windows {display.WindowsWidth} × {display.WindowsHeight}" : "Disconnected";
                 string render = display.RenderWidth > 0 && display.RenderHeight > 0 ? $"Renderer {display.RenderWidth} × {display.RenderHeight}" : "Renderer not allocated";
                 string metrics = $"{mode} · {render}\n{display.RenderedFrames:N0} rendered frame events this session · " +
-                    (display.LastFrameUtc == null ? "No frame timestamp" : $"Last frame {age:0.0}s ago") + $" · Last composition {display.RenderMilliseconds:0.0} ms";
+                    (display.LastFrameUtc == null ? "No frame timestamp · Composition not observed" : $"Last frame {age:0.0}s ago · Last composition {display.RenderMilliseconds:0.0} ms");
                 string content = surfaces.Count == 0 ? "No surface routes." : string.Join("\n", surfaces.Select(s =>
                     $"{s.Name} ← {s.SourceName}: {(s.ActiveInCue ? "active" : "inactive cue")}, {(s.HasCachedContent ? "cached content available" : "no cached content")}, opacity {s.Opacity:P0}"));
                 return display with

@@ -42,6 +42,12 @@ internal static class OutputVerificationWindowsChecks
         var preview = new ProjectionPreviewWindow(source);
         var image = (Image)preview.FindName("PreviewImage"); Drain();
         Check(ReferenceEquals(image.Source, first), "preview initially observes the existing composed frame");
+        var root = (FrameworkElement)preview.Content;
+        root.Measure(new Size(1280, 720)); root.Arrange(new Rect(0, 0, 1280, 720)); root.UpdateLayout();
+        var footer = (FrameworkElement)preview.FindName("PreviewFooter");
+        var imageBounds = image.TransformToAncestor(root).TransformBounds(new Rect(image.RenderSize));
+        var footerBounds = footer.TransformToAncestor(root).TransformBounds(new Rect(footer.RenderSize));
+        Check(imageBounds.Bottom <= footerBounds.Top + .1, "preview controls do not obscure any part of the frame viewport");
         source.SetFrame(second); Drain();
         Check(ReferenceEquals(image.Source, second), "preview updates as actual host frames change");
         // Exercise the real F5 event path and its binding cleanup.
