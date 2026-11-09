@@ -35,23 +35,33 @@ internal static class TutorialScreenshots
             foreach (var nested in Descendants<T>(child)) yield return nested;
         }
     }
-    private static void Save(FrameworkElement content, string name, double width, double height)
+    private static void SaveVisual(FrameworkElement content, string name)
     {
-        content.Measure(new Size(width, height)); content.Arrange(new Rect(0, 0, width, height)); content.UpdateLayout(); Drain(); content.UpdateLayout();
-        // Composite onto the real application background, including otherwise transparent outer margins.
+        var margin = content.Margin;
+        double width = content.RenderSize.Width + margin.Left + margin.Right;
+        double height = content.RenderSize.Height + margin.Top + margin.Bottom;
         var drawing = new DrawingVisual();
         using (var context = drawing.RenderOpen())
         {
             context.DrawRectangle((Brush)Application.Current.Resources["Ui.Background"], null, new Rect(0, 0, width, height));
-            context.DrawRectangle(new VisualBrush(content) { Stretch = Stretch.Fill }, null, new Rect(0, 0, width, height));
+            // Explicit bounds avoid scaling to ink bounds or re-laying out a nested control.
+            var brush = new VisualBrush(content)
+            {
+                AutoLayoutContent = false, ViewboxUnits = BrushMappingMode.Absolute,
+                Viewbox = new Rect(content.RenderSize), Stretch = Stretch.Fill
+            };
+            context.DrawRectangle(brush, null, new Rect(margin.Left, margin.Top, content.RenderSize.Width, content.RenderSize.Height));
         }
-        var bitmap = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32); bitmap.Render(drawing);
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32); bitmap.Render(drawing);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(Path.Combine(DirectoryName, name + ".png")); encoder.Save(stream);
     }
     private static void SaveWindow(Window window, string name, double width, double height)
     {
-        Save((FrameworkElement)window.Content, name, width, height);
+        Drain();
+        var content = (FrameworkElement)window.Content;
+        content.Measure(new Size(width, height)); content.Arrange(new Rect(0, 0, width, height)); content.UpdateLayout();
+        SaveVisual(content, name);
     }
     public static void Capture(MainWindow main)
     {
@@ -63,7 +73,7 @@ internal static class TutorialScreenshots
         var layer = new LayerViewModel(new LayerModel { Name = "Front panel", TargetMonitorIndex = -1 });
         var calibration = new CalibrationWindow(displays.Select(d => new CalibrationOutput(d.Index, d.DeviceName, d.RenderWidth, d.RenderHeight)).ToList(),
             layer, new UndoRedoService(), (_, _) => throw new InvalidOperationException("Documentation capture must not project."), () => { }, _ => 0);
-        SaveWindow(calibration, "manual-calibration", 560, 760); calibration.Close();
+        SaveWindow(calibration, "manual-calibration", 560, 880); calibration.Close();
 
         var photo = new PhotoMapWindow(new List<PhotoMappingModel>(), canCreateMeshes: false);
         SaveWindow(photo, "photo-map", 1200, 820); photo.Close();
@@ -91,10 +101,11 @@ internal static class TutorialScreenshots
             _ => throw new InvalidOperationException("Capture must not start rehearsal."), _ => Task.FromResult<RehearsalReport?>(null), () => false);
         SaveWindow(deployment, "preflight-rehearsal", 850, 730); deployment.Close();
         // The show strip and project header are actual controls, without a staged successful show.
+        ((Panel)main.Content).Background = (Brush)Application.Current.Resources["Ui.Background"];
         SaveWindow(main, "workspace-controls", 1366, 860);
         var go = (FrameworkElement)main.FindName("PART_Go");
         var strip = (FrameworkElement)((FrameworkElement)go.Parent).Parent;
-        Save(strip, "show-controls", strip.ActualWidth, strip.ActualHeight);
+        SaveVisual(strip, "show-controls");
         Console.WriteLine("Tutorial screenshots captured from real WPF controls. No AI calls or physical projection performed.");
     }
 }
