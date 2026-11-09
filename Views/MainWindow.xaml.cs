@@ -826,12 +826,19 @@ namespace ProjectionMapper
         /// <summary>
         /// Reacts to view-model property changes so service behavior (like looping) stays in sync with UI state.
         /// </summary>
-        private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        private async void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             try
             {
                 if (e.PropertyName == nameof(MainWindowViewModel.IsPlaylistMode))
                 {
+                    if (!_vm.IsPlaylistMode && !_loadingProject && (_playlistService.IsPlaying || _playlistService.IsPaused))
+                    {
+                        bool resume = _playlistService.IsPlaying;
+                        await _playlistService.StopPlaylistAsync(reEnableLooping: true, preserveSources: true);
+                        if (resume) await _videoService.ResumeAllAsync();
+                        _vm.SetPlaybackState(resume);
+                    }
                     UpdateLoopingMode(_vm.IsPlaylistMode);
                 }
             }

@@ -19,7 +19,7 @@ namespace ProjectionMapper.Services
         private List<string> _active = new();
         private readonly HashSet<string> _finished = new();
         private int _index = -1, _sequence;
-        private long _visit;
+        private long _visit, _controlGeneration;
         private bool _playing, _paused, _disposed;
         private CancellationTokenSource _session = new();
         private StillPlaybackClock? _clock;
@@ -44,14 +44,19 @@ namespace ProjectionMapper.Services
             AdvanceMode = group.AdvanceMode, HoldSeconds = group.HoldSeconds, FadeSeconds = group.FadeSeconds
         };
         private int NextIndex() => _groups.Count == 0 ? -1 : _index + 1 < _groups.Count ? _index + 1 : EnableLooping ? 0 : -1;
-        private Task Run(Func<Task> action) => Task.Run(async () =>
+        private Task Run(Func<Task> action)
         {
-            await _commands.WaitAsync().ConfigureAwait(false);
-            try { if (!_disposed) await action().ConfigureAwait(false); }
-            catch (OperationCanceledException) { Debug.WriteLine("Cue operation cancelled."); }
-            catch (Exception ex) { Debug.WriteLine($"Cue operation failed: {ex}"); ErrorOccurred?.Invoke(ex.Message); throw; }
-            finally { _commands.Release(); }
-        });
+            // Reserve the queue position synchronously; Task.Run scheduling must not reorder Go/Stop/Load commands.
+            var ready = _commands.WaitAsync();
+            return Task.Run(async () =>
+            {
+                await ready.ConfigureAwait(false);
+                try { if (!_disposed) await action().ConfigureAwait(false); }
+                catch (OperationCanceledException) { Debug.WriteLine("Cue operation cancelled."); }
+                catch (Exception ex) { Debug.WriteLine($"Cue operation failed: {ex}"); ErrorOccurred?.Invoke(ex.Message); throw; }
+                finally { _commands.Release(); }
+            });
+        }
         private CancellationToken Token { get { lock (_state) return _session.Token; } }
         private long Visit { get { lock (_state) return _visit; } }
         private bool IsCurrent(long visit) { lock (_state) return !_disposed && _playing && !_paused && _visit == visit; }
@@ -59,11 +64,13 @@ namespace ProjectionMapper.Services
         { if (FadeRequestedAsync != null) await FadeRequestedAsync(level, TimeSpan.FromSeconds(seconds), token).ConfigureAwait(false); }
         public Task StartPlaylistAsync(List<PlaylistGroupModel> groups)
         {
+            long generation; lock (_state) generation = _controlGeneration;
             var snapshot = groups.OrderBy(g => g.Order).Select(Copy).ToList();
             foreach (var cue in snapshot) ArtistRules.Validate(cue);
             return Run(async () =>
             {
-                if (snapshot.Count == 0) return;
+                lock (_state) { if (generation != _controlGeneration) return; }
+                if (snapshot.Count == 0) throw new InvalidOperationException("Create a cue with available media before starting the playlist.");
                 ResetSession();
                 lock (_state) { _groups = snapshot; _index = 0; _playing = true; _paused = false; }
                 _video.EnablePlaylistMode(); _video.DisableLoopingForAll();
@@ -92,16 +99,17 @@ namespace ProjectionMapper.Services
             _clock?.Start(restart: false);
             PlaybackStateChanged?.Invoke(PlaylistPlaybackState.Playing);
         });
-        public Task StopPlaylistAsync(bool reEnableLooping = false)
+        public Task StopPlaylistAsync(bool reEnableLooping = false, bool preserveSources = false)
         {
             // Cancel waits/fades immediately, before the stop reaches the command queue.
-            lock (_state) { _session.Cancel(); _visit++; _playing = false; _paused = false; }
+            lock (_state) { _session.Cancel(); _visit++; _controlGeneration++; _playing = false; _paused = false; }
             return Run(async () =>
             {
                 _clock?.Dispose(); _clock = null;
                 _video.SetActiveRenderLayers(Array.Empty<string>());
                 await _video.HideAllExceptGroupAsync(new()).ConfigureAwait(false);
-                await _video.StopAllAsync().ConfigureAwait(false);
+                if (preserveSources) await _video.PauseAllAsync().ConfigureAwait(false);
+                else await _video.StopAllAsync().ConfigureAwait(false);
                 if (reEnableLooping) { _video.DisablePlaylistMode(); _video.EnableLoopingForAll(); }
                 lock (_state) _index = -1;
                 _finished.Clear(); _active.Clear();
@@ -119,8 +127,12 @@ namespace ProjectionMapper.Services
             long visit = Visit;
             return Run(async () => { if (IsCurrent(visit)) await AdvanceAsync(Token).ConfigureAwait(false); });
         }
-        public Task JumpToGroupAsync(int groupIndex) => Run(async () =>
+        public Task JumpToGroupAsync(int groupIndex)
         {
+            long generation; lock (_state) generation = _controlGeneration;
+            return Run(async () =>
+            {
+                lock (_state) { if (generation != _controlGeneration) return; }
             lock (_state) { if (groupIndex < 0 || groupIndex >= _groups.Count) return; }
             ResetSession();
             var cue = CurrentGroup;
@@ -128,7 +140,8 @@ namespace ProjectionMapper.Services
             lock (_state) { _index = groupIndex; _playing = true; _paused = false; }
             _video.EnablePlaylistMode(); _video.DisableLoopingForAll();
             await ActivateAsync(Token).ConfigureAwait(false);
-        });
+            });
+        }
         private async Task AdvanceAsync(CancellationToken token)
         {
             var outgoing = CurrentGroup; int next; int old;

@@ -54,7 +54,7 @@ filter, then fade in. Each fade leg uses the cue's configured 0–10 seconds. Au
 keeps the existing preferred-source routing and switches at the cue boundary;
 this release does not crossfade audio. New cue visits restart source media at
 zero; pause/resume retains position. Serialized commands and cue-visit checks
-prevent duplicate EOF/timer/Go events from skipping a newer cue. No-active-source
+prevent duplicate EOF/timer/Go events from skipping a newer cue. Stop also invalidates pending start/jump commands; switching back to legacy mode cancels cue timers while preserving registered sources. No-active-source
 cues stop with an actionable error rather than recursively skipping forever.
 
 **Performance mode (F10)** disables the editors, editing menus/shortcuts and

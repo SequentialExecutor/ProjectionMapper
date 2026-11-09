@@ -101,6 +101,14 @@ internal static class ArtistWindowsChecks
         await cues.StartPlaylistAsync(new() { sequence, Cue("after-sequence", CueAdvanceMode.Manual, "cue-a") });
         await Task.Delay(1250); Check(cues.CurrentGroupIndex == 0, "sequential cue waits for its last source");
         await Until(() => cues.CurrentGroupIndex == 1);
+        var busyCue = Cue("busy", CueAdvanceMode.Manual, "cue-a"); busyCue.FadeSeconds = 1;
+        var busyStart = cues.StartPlaylistAsync(new() { busyCue }); await Task.Delay(50);
+        var queuedStart = cues.StartPlaylistAsync(new() { Cue("stale-start", CueAdvanceMode.Timed, "cue-b") });
+        await cues.StopPlaylistAsync(reEnableLooping: true, preserveSources: true);
+        await Task.WhenAll(busyStart, queuedStart);
+        await video.ResumeAllAsync(); await Task.Delay(1100);
+        Check(cues.CurrentGroupIndex == -1 && !cues.IsPlaying && video.GetActiveLayerIds(new List<string> { "cue-a", "cue-b" }).Count == 2,
+            "stop supersedes pending starts and legacy mode preserves sources without a surviving cue timer");
         var fade = Cue("cancel-fade", CueAdvanceMode.Manual, "cue-a"); fade.FadeSeconds = 1;
         var started = cues.StartPlaylistAsync(new() { fade }); await Task.Delay(75); await cues.StopPlaylistAsync(); await started;
         await Task.Delay(1100); Check(cues.CurrentGroupIndex == -1 && !cues.IsPlaying && cues.NextGroup?.Name == "cancel-fade", "stop cancels a fade without resurrecting the cue");

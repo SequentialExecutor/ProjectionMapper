@@ -18,7 +18,7 @@ namespace ProjectionMapper
         {
             _playlistService.FadeRequestedAsync = _rendererManager.FadeToAsync;
             _playlistService.GroupChanged += _ => Dispatcher.BeginInvoke(UpdateCueDisplay);
-            _playlistService.PlaybackStateChanged += _ => Dispatcher.BeginInvoke(() => { _vm.SetPlaybackState(_playlistService.IsPlaying); UpdateCueDisplay(); });
+            _playlistService.PlaybackStateChanged += _ => Dispatcher.BeginInvoke(() => { if (_vm.IsPlaylistMode) _vm.SetPlaybackState(_playlistService.IsPlaying); UpdateCueDisplay(); });
             _playlistService.ErrorOccurred += message => Dispatcher.BeginInvoke(() => _vm.StatusText = $"Cue error: {message}");
             InputManager.Current.PreProcessInput += ArtistInput;
             Closed += (_, _) => InputManager.Current.PreProcessInput -= ArtistInput;
