@@ -15,7 +15,7 @@ internal static class WorkspaceWindowsChecks
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
         {
             var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is Slider slider) return slider;
+            if (child is Slider slider && System.Windows.Automation.AutomationProperties.GetName(slider) == "Source preview zoom") return slider;
             var nested = FindSliderOrNull(child);
             if (nested != null) return nested;
         }
