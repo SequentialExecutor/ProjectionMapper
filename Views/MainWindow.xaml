@@ -76,6 +76,7 @@
                 <Button x:Name="PART_OutputSettings" Content="Projector color / blend…" Click="OutputControls_Click" />
             </ToolBar>
             <ToolBar x:Name="PART_EditToolbar" Band="1" BandIndex="0">
+                <Button Content="Camera calibration…" Click="CameraCalibration_Click" />
                 <Button Content="Surface mask / curved mesh…" Click="SurfaceControls_Click" />
                 <Button Content="AI artwork…" Click="OpenArtwork_Click" ToolTip="Generate, download, preview and retain artwork with provider API tokens" />
                 <Separator />

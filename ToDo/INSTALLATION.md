@@ -70,10 +70,10 @@ collection. The original open project is not switched to the collected copy.
 
 ## Destination outputs and preflight
 
-Project format **6** records the computer fingerprint and display device/interface
+Project format **7** records the computer fingerprint and display device/interface
 identities, order, positions, dimensions and render sizes in the same order as
-the application's output picker. Versions 1–5 still load. Older builds reject
-format 6 rather than discarding routing information.
+the application's output picker. Versions 1–6 still load. Older builds reject
+format 7 rather than discarding routing information.
 
 When the destination differs, **Output setup** requires a deliberate destination
 for each saved output, or **Preview only**. No new projector windows open until
@@ -138,3 +138,7 @@ real hardware:
 
 These hardware acceptance steps remain pending until performed by the owner.
 CI verifies software behavior and real file operations, not physical projection.
+
+## Camera-assisted calibration
+
+**Camera calibration…** projects local coded markers and validates a plane using independent withheld points before applying a selected mesh. Format 7 embeds its photo and evidence. The Windows package includes OpenCV native files; install the Microsoft Visual C++ 2015–2022 x64 redistributable if marker imaging cannot load. See [camera workflow and physical acceptance](CAMERA-CALIBRATION.md). Native imaging is unnecessary for playback of already accepted geometry.

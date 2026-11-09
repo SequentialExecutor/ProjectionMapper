@@ -1973,7 +1973,8 @@ namespace ProjectionMapper
                     Name = _vm.ActiveProject?.Name ?? "Untitled Project",
                     CreatedAt = _vm.ActiveProject?.CreatedAt ?? DateTime.UtcNow,
                     LastModified = _vm.ActiveProject?.LastModified ?? DateTime.UtcNow,
-                    ProjectVersion = 6,
+                    ProjectVersion = 7,
+                    CameraCalibrations = _vm.ActiveProject?.CameraCalibrations ?? new(),
                     OutputLayout = _outputsNeedSetup ? _vm.ActiveProject?.OutputLayout?.Copy() : CaptureOutputLayout(),
                     PlaylistMode = _vm.IsPlaylistMode,
                     OutputAppearances = _vm.ActiveProject?.OutputAppearances.Select(o => o.Copy()).ToList() ?? new(),
@@ -2061,11 +2062,12 @@ namespace ProjectionMapper
                 // mutable editor objects after returning to the dispatcher.
                 var photos = project.PhotoMaps.Select(photo => photo.Copy()).ToList();
                 var artwork = project.ArtworkAssets.Select(asset => asset.Copy()).ToList();
-                project.PhotoMaps = new(); project.ArtworkAssets = new();
+                var calibrations = project.CameraCalibrations.Select(c => c.Copy()).ToList();
+                project.PhotoMaps = new(); project.ArtworkAssets = new(); project.CameraCalibrations = new();
                 var options = new JsonSerializerOptions { IncludeFields = true };
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, options), options)
                     ?? throw new InvalidDataException("Could not capture project state.");
-                snapshot.PhotoMaps = photos; snapshot.ArtworkAssets = artwork;
+                snapshot.PhotoMaps = photos; snapshot.ArtworkAssets = artwork; snapshot.CameraCalibrations = calibrations;
                 return snapshot;
             }
             catch (Exception ex)

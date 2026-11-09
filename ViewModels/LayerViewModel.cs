@@ -132,6 +132,12 @@ namespace ProjectionMapper.ViewModels
             RaisePropertyChanged(nameof(MeshPoints));
         }
 
+        /// <summary>Replace all output corners together so observers never see an intermediate calibration quad.</summary>
+        public void SetOutputQuad(Vector2[] points)
+        {
+            if (!ProjectionMapper.Utilities.QuadGeometry.IsValid(points) || points.Any(p => p.X < 0 || p.X > 1 || p.Y < 0 || p.Y > 1)) throw new ArgumentException("Output corners must be a valid normalized quad.");
+            _model.OutputMeshPoints = (Vector2[])points.Clone(); RaisePropertyChanged(nameof(OutputMeshPoints));
+        }
         public void SetOutputMeshPoint(int index, Vector2 pt)
         {
             if (!float.IsFinite(pt.X) || !float.IsFinite(pt.Y)) throw new ArgumentOutOfRangeException(nameof(pt));

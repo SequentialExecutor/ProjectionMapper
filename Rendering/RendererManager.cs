@@ -282,7 +282,7 @@ namespace ProjectionMapper.Rendering
             OnMonitorFrameReady(monitorIndex, latest);
         }
 
-        public int[] CalibrationMonitorIndices => _calibrationPatterns.Keys.ToArray();
+        public int[] CalibrationMonitorIndices => _calibrationPatterns.Keys.Concat(_cameraCapture == null ? Array.Empty<int>() : new[] { _cameraCapture.Index }).Distinct().ToArray();
 
         public double GetMonitorRenderMilliseconds(int monitorIndex) =>
             _monitorRenderers.TryGetValue(monitorIndex, out var renderer) && renderer is SoftwareRenderer software
@@ -335,7 +335,7 @@ namespace ProjectionMapper.Rendering
                 {
                     if (_fullscreenWindows.TryGetValue(monitorIndex.Value, out var win) && win != null)
                     {
-                        InvokeOnUi(() => { if (_blackout || _performanceMode) win.HostControl.ClearOverlay(); else win.HostControl.SetMeshOverlay(quadPoints, showPoints); });
+                        InvokeOnUi(() => { if (_blackout || _performanceMode || _cameraSessionActive) win.HostControl.ClearOverlay(); else win.HostControl.SetMeshOverlay(quadPoints, showPoints); });
                         return;
                     }
                 }
@@ -343,7 +343,7 @@ namespace ProjectionMapper.Rendering
                 // fallback to main host
                 if (_host != null)
                 {
-                    InvokeOnUi(() => { if (_blackout || _performanceMode) _host.ClearOverlay(); else _host.SetMeshOverlay(quadPoints, showPoints); });
+                    InvokeOnUi(() => { if (_blackout || _performanceMode || _cameraSessionActive) _host.ClearOverlay(); else _host.SetMeshOverlay(quadPoints, showPoints); });
                 }
             }
             catch (Exception ex) { Debug.WriteLine($"SetMeshOverlayForMonitor failed: {ex}"); }
@@ -453,7 +453,7 @@ namespace ProjectionMapper.Rendering
 
                     try
                     {
-                        if (_blackout || _performanceMode) { win.HostControl.ClearOverlay(); win.HostControl.ClearCompositeMeshOverlay(); return; }
+                        if (_blackout || _performanceMode || _cameraSessionActive) { win.HostControl.ClearOverlay(); win.HostControl.ClearCompositeMeshOverlay(); return; }
                         // Fresh snapshot at dispatch time captures the current (latest) overlay state.
                         List<(Point[] QuadPoints, bool ShowPoints, string LayerId)>? overlaysCopy = null;
                         if (_monitorMeshOverlays.TryGetValue(monitorIndex, out var overlaysNow) && overlaysNow.Count > 0)
@@ -495,7 +495,7 @@ namespace ProjectionMapper.Rendering
                             // Clear existing mesh overlays first
                             _host.ClearMeshOverlay();
 
-                            if (_blackout || _performanceMode) return;
+                            if (_blackout || _performanceMode || _cameraSessionActive) return;
                             // Draw all overlays for main host using AddMeshOverlay to show multiple
                             foreach (var (quadPoints, showPoints, layerId) in _mainHostMeshOverlays)
                             {

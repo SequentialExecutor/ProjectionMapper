@@ -112,7 +112,7 @@ namespace ProjectionMapper.Services
             }
         }, token);
         private static bool IsExternalReference(string path) => DeploymentProject.IsExternalReferenceMedia(path);
-        public static long EstimateProjectBytes(ProjectModel project) => 1024 * 1024L + project.PhotoMaps.Sum(p => (long)p.ImageBase64.Length) +
+        public static long EstimateProjectBytes(ProjectModel project) => 1024 * 1024L + project.CameraCalibrations.Sum(c => (long)c.Photo.ImageBase64.Length) + project.PhotoMaps.Sum(p => (long)p.ImageBase64.Length) +
             project.ArtworkAssets.Sum(a => (long)a.ImageBase64.Length + a.ThumbnailBase64.Length + a.References.Sum(r => (long)r.ImageBase64.Length));
         public static long? AvailableBytes(string path)
         {

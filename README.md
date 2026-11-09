@@ -14,8 +14,12 @@ The program currently compiles and runs, allowing you to send video output to tw
 
 ### Artist controls and live operation
 
-Use **Surface mask / curved mesh…** for polygon masks, inward feathering and subdivided texture grids. **Cue settings…** extends playlist groups with manual/timed advancement and visual fades. **Performance mode** locks editing; **F12** blacks out all projector presentations while playback continues. **Projector color / blend…** provides independent brightness/gamma/RGB and manual overlap ramps. Settings save in project format 6. See [artist controls and acceptance checks](ToDo/ARTIST-CONTROLS.md).
+Use **Surface mask / curved mesh…** for polygon masks, inward feathering and subdivided texture grids. **Cue settings…** extends playlist groups with manual/timed advancement and visual fades. **Performance mode** locks editing; **F12** blacks out all projector presentations while playback continues. **Projector color / blend…** provides independent brightness/gamma/RGB and manual overlap ramps. Settings save in project format 7. See [artist controls and acceptance checks](ToDo/ARTIST-CONTROLS.md).
 
 ### Portable installations and rehearsal
 
 Use **Collect / preflight / rehearsal…** to create a verified project folder, check dependencies/media/outputs, and record real rehearsal statistics. **Output setup…** explicitly remaps destination projectors when the computer or display layout changes. Windows CI publishes a self-contained **ProjectionMapper-win-x64** application artifact. See [installation, transfer and hardware acceptance](ToDo/INSTALLATION.md). Physical projector and sustained-show acceptance remain operator tasks.
+
+### Camera-assisted planar calibration
+
+Select an unlocked planar mesh assigned to a projector and open **Camera calibration…**. Project coded markers, import their photograph, inspect/correct matches, mark the target corners, and review independent projector-pixel errors before projecting an outline and applying. Accepted photos/evidence persist in format 7 and collected projects. This local workflow requires no AI token; physical accuracy must be measured on the installation. See [camera calibration](ToDo/CAMERA-CALIBRATION.md).

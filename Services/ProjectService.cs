@@ -60,7 +60,7 @@ namespace ProjectionMapper.Services
                 var snapshot = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, _jsonOptions), _jsonOptions)
                     ?? throw new InvalidDataException("Project snapshot is empty.");
                 Validate(snapshot);
-                snapshot.ProjectVersion = 6;
+                snapshot.ProjectVersion = 7;
                 snapshot.LastModified = DateTime.UtcNow;
                 ResolvePaths(snapshot, directory, relative: true);
                 Directory.CreateDirectory(directory);
@@ -125,7 +125,7 @@ namespace ProjectionMapper.Services
 
         public static void Validate(ProjectModel project)
         {
-            if (project.ProjectVersion < 1 || project.ProjectVersion > 6)
+            if (project.ProjectVersion < 1 || project.ProjectVersion > 7)
                 throw new InvalidDataException($"Project version {project.ProjectVersion} is unsupported. Use a compatible version of ProjectionMapper.");
             if (project.ImportedVideos == null || project.PlaylistGroups == null || project.Surfaces == null)
                 throw new InvalidDataException("Project collections cannot be null.");
@@ -146,6 +146,13 @@ namespace ProjectionMapper.Services
             {
                 if (asset == null || !artworkIds.Add(asset.Id)) throw new InvalidDataException("Artwork assets need unique IDs.");
                 ArtworkRules.ValidateAsset(asset);
+            }
+            if (project.CameraCalibrations == null || project.CameraCalibrations.Count > 32) throw new InvalidDataException("A project supports up to 32 camera calibration records.");
+            var calibrationIds = new System.Collections.Generic.HashSet<string>();
+            foreach (var calibration in project.CameraCalibrations)
+            {
+                PlanarCalibration.ValidateRecord(calibration);
+                if (!calibrationIds.Add(calibration.Id)) throw new InvalidDataException("Camera calibration records must have unique IDs.");
             }
             if (project.OutputLayout != null)
             {

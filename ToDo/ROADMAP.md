@@ -1,6 +1,6 @@
 # ProjectionMapper development roadmap
 
-Status: implementation delivered through Milestone 7; physical, sustained-show and live-account acceptance remains open. Automated calibration and other later work remain planned.
+Status: implementation delivered through Milestone 7; physical, sustained-show and live-account acceptance remains open. Camera-assisted planar calibration is implemented; its real-installation acceptance and other later work remain open.
 Updated: November 9, 2026.
 
 ## Product goal
@@ -212,9 +212,11 @@ Acceptance:
 
 Dependency: Milestones 1–3 and whichever creative features are selected for release.
 
-## Later work: automated calibration
+## Camera-assisted planar calibration — implementation delivered
 
 Goal: reduce manual alignment after assisted photo mapping is proven useful.
+
+See [Camera calibration](CAMERA-CALIBRATION.md) for local coded markers, independent pixel-error validation, editable matches/targets, saved evidence, tests and physical acceptance steps. This is a planar workflow; full 3D and automatic camera capture remain outside this delivery.
 
 Project known markers, photograph them, detect correspondences, estimate a transform, and let users verify or correct it. A planar homography is suitable for a flat surface; distinct depths require separate surface calibration or a more advanced geometric method.
 

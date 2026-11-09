@@ -20,7 +20,7 @@ namespace ProjectionMapper.Services
             DeploymentSettings settings;
             try { settings = DeploymentSettings.Load(); ProjectService.Validate(detachedProject); }
             catch (Exception ex) { Add(CheckSeverity.Error, "project.invalid", ex.Message, "Fix project data or restore a valid backup."); return report; }
-            Add(CheckSeverity.Info, "project.compatible", $"Project format {detachedProject.ProjectVersion} is supported; saves use format 6.");
+            Add(CheckSeverity.Info, "project.compatible", $"Project format {detachedProject.ProjectVersion} is supported; saves use format 7.");
             Add(OperatingSystem.IsWindows() && Environment.Is64BitProcess ? CheckSeverity.Info : CheckSeverity.Error, "runtime.platform", $"{RuntimeInformation.OSDescription}; .NET {Environment.Version}; {RuntimeInformation.ProcessArchitecture}.", "The application requires supported 64-bit Windows and .NET 9 Desktop Runtime.");
             if (DeploymentProject.NeedsOutputSetup(detachedProject, hardware) && !(outputReviewConfirmed && DeploymentProject.SameLayout(detachedProject.OutputLayout, hardware))) Add(CheckSeverity.Error, "outputs.reassign", "Saved output hardware does not match the current computer/layout.", "Open Output setup and explicitly select destination projectors or Preview only.");
             else Add(CheckSeverity.Info, "outputs.layout", "Output layout matches, or all assignments are Preview only.");
@@ -82,6 +82,16 @@ namespace ProjectionMapper.Services
             else Add(CheckSeverity.Info, "decoder.offline", "No external media is present; accepted artwork playback needs no decoder or AI credentials.");
             if (projectPath != null && File.Exists(Path.Combine(Path.GetDirectoryName(projectPath)!, PortableProjectService.ManifestName)))
                 report.Checks.AddRange(await new PortableProjectService().VerifyAsync(Path.GetDirectoryName(projectPath)!, token, Path.GetFileName(projectPath)).ConfigureAwait(false));
+            foreach (var group in detachedProject.CameraCalibrations.GroupBy(c => c.MeshId))
+            {
+                var calibration = group.OrderByDescending(c => c.CreatedUtc).First();
+                var mesh = detachedProject.ImportedVideos.SelectMany(v => v.MeshLayers).FirstOrDefault(m => m.Id == group.Key);
+                if (mesh == null) continue; // Historical records may outlive deleted surfaces.
+                var output = hardware.Displays.FirstOrDefault(d => d.Index == mesh.TargetMonitorIndex);
+                bool matches = mesh.OutputMeshPoints.Length == 8 && mesh.OutputMeshPoints.Where((value, i) => Math.Abs(value - calibration.OutputCorners[i]) > 1e-6).Any() == false;
+                bool hardwareMatches = output != null && calibration.ComputerId == hardware.ComputerId && output == calibration.Output;
+                if (!matches || !hardwareMatches) Add(CheckSeverity.Warning, "calibration.stale", $"Camera evidence for '{mesh.Name}' no longer matches its geometry or output environment.", "Recalibrate or verify the edited mapping on the physical surface; old residuals are historical evidence.");
+            }
             Add(CheckSeverity.Info, "acceptance.manual", "Physical alignment, color/blending, audio timing and a four-hour offline rehearsal require operator acceptance.");
             token.ThrowIfCancellationRequested();
             return report;

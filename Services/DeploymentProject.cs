@@ -13,17 +13,18 @@ namespace ProjectionMapper.Services
     {
         public static ProjectModel Copy(ProjectModel project)
         {
-            if (project.PhotoMaps == null || project.ArtworkAssets == null) throw new InvalidDataException("Project image collections are missing.");
+            if (project.PhotoMaps == null || project.ArtworkAssets == null || project.CameraCalibrations == null) throw new InvalidDataException("Project image collections are missing.");
             // Clone editable metadata while sharing immutable embedded-image strings; large libraries must not be serialized just to snapshot.
             var resolver = new DefaultJsonTypeInfoResolver();
             resolver.Modifiers.Add(info =>
             {
                 if (info.Type == typeof(ProjectModel)) foreach (var property in info.Properties)
-                    if (property.Name is nameof(ProjectModel.PhotoMaps) or nameof(ProjectModel.ArtworkAssets)) property.ShouldSerialize = (_, _) => false;
+                    if (property.Name is nameof(ProjectModel.PhotoMaps) or nameof(ProjectModel.ArtworkAssets) or nameof(ProjectModel.CameraCalibrations)) property.ShouldSerialize = (_, _) => false;
             });
             var options = new JsonSerializerOptions { IncludeFields = true, TypeInfoResolver = resolver };
             var copy = JsonSerializer.Deserialize<ProjectModel>(JsonSerializer.Serialize(project, options), options) ?? throw new InvalidDataException("The project snapshot is empty.");
             copy.PhotoMaps = project.PhotoMaps.Select(p => p.Copy()).ToList(); copy.ArtworkAssets = project.ArtworkAssets.Select(a => a.Copy()).ToList();
+            copy.CameraCalibrations = project.CameraCalibrations.Select(c => c.Copy()).ToList();
             return copy;
         }
         public static bool IsExternalReferenceMedia(string path) => new[] { ".m3u8", ".m3u", ".pls", ".ffconcat", ".concat", ".mpd", ".sdp", ".url" }.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);

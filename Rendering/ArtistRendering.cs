@@ -113,8 +113,29 @@ namespace ProjectionMapper.Rendering
             foreach (var index in _outputAppearances.Keys) SetOutputAppearance(index, null);
             _liveState.Gain = 1;
         }
-        internal BitmapSource? ResolveMonitorPresentation(int index, BitmapSource? frame) => _blackout ? Black :
-            (!_performanceMode && _calibrationPatterns.TryGetValue(index, out var pattern) ? pattern : frame);
+        private sealed record CameraCapture(int Index, BitmapSource Frame);
+        private CameraCapture? _cameraCapture;
+        private volatile bool _cameraSessionActive;
+        public void SetCameraCalibrationSession(bool active)
+        {
+            _cameraSessionActive = active;
+            if (!active) SetCameraCalibrationPattern(null, null);
+            foreach (int index in _fullscreenWindows.Keys) RefreshMeshOverlaysForMonitor(index);
+            RefreshMeshOverlaysForMainHost();
+        }
+        public void SetCameraCalibrationPattern(int? index, BitmapSource? frame)
+        {
+            if (frame != null && (!index.HasValue || !frame.IsFrozen)) throw new ArgumentException("Calibration patterns need a selected output and an immutable frame.");
+            Volatile.Write(ref _cameraCapture, frame == null ? null : new CameraCapture(index!.Value, frame));
+            foreach (int output in _fullscreenWindows.Keys) { _latestMonitorFrames.TryGetValue(output, out var latest); OnMonitorFrameReady(output, latest); }
+        }
+        internal BitmapSource? ResolveMonitorPresentation(int index, BitmapSource? frame)
+        {
+            if (_blackout) return Black;
+            var capture = Volatile.Read(ref _cameraCapture);
+            if (!_performanceMode && capture != null) return index == capture.Index ? capture.Frame : Black;
+            return !_performanceMode && _calibrationPatterns.TryGetValue(index, out var pattern) ? pattern : frame;
+        }
         public void SetBlackout(bool blackout)
         {
             _blackout = blackout;

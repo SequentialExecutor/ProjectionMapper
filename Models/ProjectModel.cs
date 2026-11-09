@@ -17,9 +17,9 @@ namespace ProjectionMapper.Models
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references; Version 4 = portable artwork assets and assignments; Version 5 = artist controls and cues; Version 6 = destination output layout.
+        /// Project version for format compatibility. Version 1 = legacy (no groups), Version 2 = with playlist groups; Version 3 = embedded photo references; Version 4 = portable artwork assets and assignments; Version 5 = artist controls and cues; Version 6 = destination output layout; Version 7 = camera calibration evidence.
         /// </summary>
-        public int ProjectVersion { get; set; } = 6;
+        public int ProjectVersion { get; set; } = 7;
 
         // Make surfaces observable for UI binding
         [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
@@ -48,6 +48,8 @@ namespace ProjectionMapper.Models
         public string ArtworkPalette { get; set; } = string.Empty;
 
         public List<OutputAppearance> OutputAppearances { get; set; } = new();
+
+        public List<CameraCalibrationRecord> CameraCalibrations { get; set; } = new();
 
         public OutputLayout? OutputLayout { get; set; }
 

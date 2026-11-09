@@ -16,6 +16,7 @@
     <!-- Run the real persistence implementation without requiring WPF or FFmpeg. -->
     <Compile Include="../../Services/ArtworkGenerationService.cs" Link="ArtworkGenerationService.cs" />
     <Compile Include="../../Services/StillPlaybackClock.cs" Link="StillPlaybackClock.cs" />
+    <Compile Include="../../Utilities/PlanarCalibration.cs" Link="PlanarCalibration.cs" />
     <Compile Include="../../Utilities/ArtistRules.cs" Link="ArtistRules.cs" />
     <Compile Include="../../Utilities/ArtistPixels.cs" Link="ArtistPixels.cs" />
     <Compile Include="../../Utilities/ArtworkRules.cs" Link="ArtworkRules.cs" />

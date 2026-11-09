@@ -84,10 +84,10 @@ open and run offline without its original videos or the external download folder
 
 ## Storage, limits, and threading
 
-Project format 6 retains artwork PNGs/thumbnails, hashes, provider/model, prompt,
+Project format 7 retains artwork PNGs/thumbnails, hashes, provider/model, prompt,
 style/palette, generation settings, request ID when provided, timestamp, layout,
-reference data, and mesh image-cell bindings. Formats 1–5 remain readable; older
-builds reject format 6 instead of silently dropping artwork. Projects support up to
+reference data, and mesh image-cell bindings. Formats 1–6 remain readable; older
+builds reject format 7 instead of silently dropping artwork. Projects support up to
 32 accepted images; the generator keeps at most eight unaccepted variants in memory
 and limits each batch to four. Archive extra results in the download folder.
 
