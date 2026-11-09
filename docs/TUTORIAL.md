@@ -70,6 +70,10 @@ To map several objects from one video, select the source and add more surfaces. 
 
 If Windows is using the wrong projector resolution, first open **Show setup > Display resolutions…**. Select the display, choose a driver-supported resolution/refresh rate, and click **Try resolution**. Choose **Keep resolution** within 15 seconds, or it reverts. Repeat for other projectors independently. Then review **Show setup > Assign projector outputs…**, restore output with F12, and align as below. See [display resolution details](../ToDo/DISPLAY-RESOLUTIONS.md).
 
+![Per-display Windows resolution and refresh-rate selection](images/display-resolutions.png)
+
+*Choose the display first, then its resolution and refresh rate. **Try resolution** opens the 15-second keep/revert confirmation. Your driver will report its own supported modes.*
+
 ![Manual calibration: output selector, numbered grid, corner coordinates, and mapping lock](images/manual-calibration.png)
 
 *Steps 2–7: choose the output at the top, identify it with **Show numbered grid**, assign the selected mesh, then edit a corner and its X/Y values. **Lock input/output mapping** protects the finished alignment. Your display name will differ.*

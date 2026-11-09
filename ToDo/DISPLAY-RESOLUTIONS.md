@@ -1,6 +1,6 @@
 # Per-display resolutions
 
-Open **Show setup > Display resolutions…** outside Performance mode. Choose the display by its Windows device name, then select a resolution and refresh rate from the driver-reported list. The current Windows mode appears above the picker. Each display is configured independently; modes are not guessed from a list of generic presets.
+Open **Show setup > Display resolutions…** outside Performance mode. Choose the display by its Windows device name, then select a resolution and refresh rate from the driver-reported list. The current Windows mode appears above the picker. Each display is configured independently; modes are not guessed from a list of generic presets. If you are unsure which display is the projector, identify it first with **Mapping > Manual calibration… > Show numbered grid**.
 
 Choose **Try resolution**. Output windows close while the mode changes. Choose **Keep resolution** within 15 seconds to save the mode in Windows, or **Revert now** to restore it immediately. Timeout or closing the confirmation also restores the previous mode. Unsupported modes and driver failures report an error; partial failures attempt rollback. If Windows cannot restore a disconnected or failed output, use Windows Display settings and reconnect the display.
 
